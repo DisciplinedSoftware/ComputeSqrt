@@ -64,6 +64,14 @@ std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
     return { fractional, exponent };
 }
 
+// ----------------------------------------------------------------------------
+// Compute square root using the factional and exponent optimization
+// Split the problem into the fractional and the exponent parts since:
+// sqrt(frac*2^exp)
+// sqrt(frac)*sqrt(2^exp)
+// sqrt(frac)*2^(exp/2)
+// To make this optimization works the exponent must be even
+// This is less optimal when the value is a perfect square
 template<typename T, typename F>
 auto compute_square_root_using_fractional_and_exponent_optimization(T value_, F&& func_) -> T {
     if (!std::isfinite(value_)) {
@@ -75,12 +83,7 @@ auto compute_square_root_using_fractional_and_exponent_optimization(T value_, F&
         return NAN;
     }
 
-    // Split the problem into the fractional part and the exponent since:
-    // sqrt(frac*2^exp)
-    // sqrt(frac)*sqrt(2^exp)
-    // sqrt(frac)*2^(exp/2)
-    // To make this optimization works the exponent must be even
-    // This is less optimal when value is a perfect square
+    // Split the problem into the fractional and the exponent parts
     const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
 
     // Early return for 0 or 1
