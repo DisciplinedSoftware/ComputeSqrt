@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <numbers>
+#include <numeric>
 #include <ranges>
 #include <span>
 #include <string>
@@ -227,38 +228,25 @@ TEST_CASE("compute_square_root_heron_method") {
     CHECK_THAT(compute_square_root_heron_method(2.2e-300), Catch::Matchers::WithinAbs(std::sqrt(2.2e-300), std::numeric_limits<double>::epsilon()));
 }
 
+namespace details {
 
+// ----------------------------------------------------------------------------
+// Compute square root of the fractional part
 template<typename T>
-auto compute_square_root_bakhshali_method(T value_) -> T {
-    if (!std::isfinite(value_)) {
-        return value_;
-    }
-
-    // Cannot calculate the root of a negative number
-    if (value_ < 0) {
-        return NAN;
-    }
-
-    // Early return for 0 or 1
-    if (value_ * value_ == value_) {
-        return value_;
-    }
-
-    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
-
-    T x = fractional / 2;
+auto compute_square_root_bakhshali_method_fractional(T fractional_) -> T {
+    T x = fractional_ / 2;
     T old = std::numeric_limits<T>::max();
 
     while (true) {
-        const T a = (fractional / x - x) / 2;
+        const T a = (fractional_ / x - x) / 2;
         const T d = a - (a * a) / (2 * (x + a));
         const T x_temp = x + d;
 
-        const T abs_epsilon = x_temp * x_temp - value_;
+        const T abs_epsilon = x_temp * x_temp - fractional_;
 
         // Are we closer to our goal
         if (abs_epsilon >= old) {
-            return std::ldexp(x_temp, exponent / 2);
+            return x_temp;
         }
 
         old = abs_epsilon;
@@ -266,11 +254,23 @@ auto compute_square_root_bakhshali_method(T value_) -> T {
     }
 }
 
-double compute_square_root_bakhshali_method(std::integral auto value_)
-{
+}
+
+// ----------------------------------------------------------------------------
+// Compute the square root using bakhshali's method
+template<typename T>
+auto compute_square_root_bakhshali_method(T value_) -> T {
+    return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_bakhshali_method_fractional<T>);
+}
+
+// ----------------------------------------------------------------------------
+// Overload for integral value
+double compute_square_root_bakhshali_method(std::integral auto value_) {
     return compute_square_root_bakhshali_method<double>(value_);
 }
 
+// ----------------------------------------------------------------------------
+// Test cases
 TEST_CASE("compute_square_root_bakhshali_method") {
     CHECK(compute_square_root_bakhshali_method(0) == std::sqrt(0));
     CHECK(compute_square_root_bakhshali_method(-0) == std::sqrt(-0));
