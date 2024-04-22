@@ -343,8 +343,7 @@ public:
 
     large_integer operator-(const large_integer& other_) const {
         if (sign != other_.sign) {
-            auto result_data = add_large_unsigned_integer_sorted(data, other_.data);
-            return { sign, result_data };
+            return *this + large_integer(!other_.sign, other_.data);
         }
 
         if (*this < other_) {
@@ -454,14 +453,6 @@ private:
         data.emplace_back(static_cast<underlying_type>(value_));
 
         return data;
-    }
-
-    static constexpr [[nodiscard]] collection_type add_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_) {
-        if (compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::less) {
-            return add_large_unsigned_integer_sorted(rhs_, lhs_);
-        }
-
-        return add_large_unsigned_integer_sorted(lhs_, rhs_);
     }
 
     static constexpr [[nodiscard]] collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
