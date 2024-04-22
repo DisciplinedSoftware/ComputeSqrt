@@ -41,7 +41,7 @@ namespace details {
 
 // ----------------------------------------------------------------------------
 // Split value into its fractional and exponent part with the exponent always even
-// fractional part is (-2, -1], [1, 2)
+// fractional part is (-2, -0.25], [0.25, 2)
 // return [fractional, exponent]
 template<typename T>
 std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
@@ -64,17 +64,47 @@ std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
     return { fractional, exponent };
 }
 
-//template<typename T, typename F>
-//auto compute_using
+template<typename T, typename F>
+auto compute_square_root_using_fractional_and_exponent_optimization(T value_, F&& func_) -> T {
+    if (!std::isfinite(value_)) {
+        return value_;
+    }
 
+    // Cannot calculate the root of a negative number
+    if (value_ < 0) {
+        return NAN;
+    }
+
+    // Split the problem into the fractional part and the exponent since:
+    // sqrt(frac*2^exp)
+    // sqrt(frac)*sqrt(2^exp)
+    // sqrt(frac)*2^(exp/2)
+    // To make this optimization works the exponent must be even
+    // This is less optimal when value is a perfect square
+    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
+
+    // Early return for 0 or 1
+    if (value_ == T{ 0 } || value_ == T{ 1 }) {
+        return value_;
+    }
+
+    const auto result = func_(fractional);
+
+    // Reconstruct the result
+    return std::ldexp(result, exponent / 2);
+}
+
+// ----------------------------------------------------------------------------
+// Compute square root of the fractional part
 template<typename T>
-auto compute_square_root_binary_search_method_fractional(T fractional) -> T {
-    assert(1 <= fractional && fractional < 2);
+auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
+    assert(0 <= fractional_ && fractional_ < 2);
 
-    // Search from zero to fractional
-    // Since fractional is between [1,2) the sqrt will be between 0 and sqrt(2)
+    // Search from zero to fractional_
+    // If fractional_ is less than 1, then the result will be greater than fractional_, hence the search is from 0 to fractional_ + 1
+    // Since fractional_ is between [0.25,2) the sqrt will be between 0 and, at worst, sqrt(2), hence the maximum is fixed to sqrt(2)
     T left = 0;
-    T right = std::numbers::sqrt2_v<T>;
+    T right = fractional_ >= 1 ? std::min(fractional_, std::numbers::sqrt2_v<T>) : std::min(fractional_+1, std::numbers::sqrt2_v<T>);
     T old = std::numeric_limits<T>::max();
 
     while (true) {
@@ -89,12 +119,12 @@ auto compute_square_root_binary_search_method_fractional(T fractional) -> T {
         const T square = middle * middle;
 
         // Early return optimization as the value was found
-        if (square == fractional) {
+        if (square == fractional_) {
             return middle;
         }
 
         // Reduce the interval
-        if (square < fractional) {
+        if (square < fractional_) {
             left = middle;
         }
         else {
@@ -111,32 +141,7 @@ auto compute_square_root_binary_search_method_fractional(T fractional) -> T {
 // Compute the square root using a binary search
 template<typename T>
 auto compute_square_root_binary_search_method(T value_) -> T {
-    if (!std::isfinite(value_)) {
-        return value_;
-    }
-
-    // Cannot calculate the root of a negative number
-    if (value_ < 0) {
-        return NAN;
-    }
-
-    // Early return for 0 or 1
-    if (value_ * value_ == value_) {
-        return value_;
-    }
-
-    // Split the problem into the fractional part and the exponent since:
-    // sqrt(frac*2^exp)
-    // sqrt(frac)*sqrt(2^exp)
-    // sqrt(frac)*2^(exp/2)
-    // To make this optimization works the exponent must be even
-    // This is less optimal when value is a perfect square
-    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
-
-    const auto result = details::compute_square_root_binary_search_method_fractional(fractional);
-
-    // Reconstruct the result
-    return std::ldexp(result, exponent / 2);
+    return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_binary_search_method_fractional<T>);
 }
 
 // ----------------------------------------------------------------------------
