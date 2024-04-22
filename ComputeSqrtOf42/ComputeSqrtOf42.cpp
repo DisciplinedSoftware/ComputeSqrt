@@ -293,7 +293,7 @@ TEST_CASE("compute_square_root_bakhshali_method") {
 // TODO: Implement a version that stream the digits
 
 // TODO: Modify implementations to avoid data copies when signs are different
-// This can also be achieved by moving operations to functions that always take the large_integer_using_ref_to_data
+// This can also be achieved by moving operations to functions that only takes the data
 
 class large_integer;
 constexpr large_integer from_string(const std::string& str_);
@@ -316,11 +316,11 @@ public:
     constexpr large_integer(const char* str_) : large_integer(from_string(str_)) {}
     constexpr large_integer(const std::string& str_) : large_integer(from_string(str_)) {}
 
-    large_integer operator-() const {
+    constexpr large_integer operator-() const {
         return { !sign, data };
     }
 
-    large_integer operator+(const large_integer& other_) const {
+    constexpr large_integer operator+(const large_integer& other_) const {
         if (sign != other_.sign) {
             return *this - large_integer(!other_.sign, other_.data);
         }
@@ -329,42 +329,7 @@ public:
             return other_ + *this;
         }
 
-        std::vector<underlying_type> result_data(data.size() + 1, 0);
-
-        size_t index = 0;
-        for (; index < other_.data.size(); ++index) {
-            const extended_type lhs = data[index];
-            const extended_type rhs = other_.data[index];
-            const extended_type old_result = result_data[index];
-            const extended_type sum = lhs + rhs + old_result;
-
-            // Keep only the lower part that can be stored in underlying_type
-            result_data[index] = static_cast<underlying_type>(sum);
-
-            // Compute the overflow that cannot be stored
-            result_data[index+1] = sum >> nb_extended_type_bits;
-        }
-
-        // Expand the overflow
-        for (; index < data.size(); ++index) {
-            const extended_type lhs = data[index];
-            const extended_type old_result = result_data[index];
-            const extended_type sum = lhs + old_result;
-
-            // Keep only the lower part that can be stored in underlying_type
-            result_data[index] = static_cast<underlying_type>(sum);
-
-            // Compute the overflow that cannot be stored
-            result_data[index + 1] = sum >> nb_extended_type_bits;
-        }
-
-        // Trim upper zeros
-        index = result_data.size();
-        while (index > 1 && result_data[--index] == 0) {
-            result_data.pop_back();
-        }
-
-        result_data.shrink_to_fit();
+        auto result_data = add_large_unsigned_integer_sorted(data, other_.data);
 
         bool result_sign = sign;
 
@@ -378,69 +343,15 @@ public:
 
     large_integer operator-(const large_integer& other_) const {
         if (sign != other_.sign) {
-            return *this + large_integer(!other_.sign, other_.data);
+            auto result_data = add_large_unsigned_integer_sorted(data, other_.data);
+            return { sign, result_data };
         }
 
         if (*this < other_) {
             return -(other_ - *this);
         }
 
-        assert(data.size() >= other_.data.size());
-
-        std::vector<underlying_type> result_data;
-        result_data.reserve(data.size());
-
-        bool carry = false;
-        const size_t min_size = other_.data.size();
-        size_t index = 0;
-        for (; index < min_size; ++index) {
-            const signed_extended_type lhs = data[index];
-            const signed_extended_type rhs = other_.data[index];
-
-            signed_extended_type value = lhs;
-            if (carry) {
-                --value;
-            }
-
-            if (value < rhs) {
-                value += base;
-                carry = true;
-            }
-            else {
-                carry = false;
-            }
-
-            extended_type diff = value - rhs;
-            assert(diff <= std::numeric_limits<underlying_type>::max());
-            result_data.emplace_back(static_cast<underlying_type>(diff));
-        }
-
-        for (; index < data.size(); ++index) {
-            const signed_extended_type lhs = data[index];
-            signed_extended_type value = lhs;
-            if (carry) {
-                --value;
-            }
-
-            if (value < 0) {
-                value += base;
-                carry = true;
-            }
-            else {
-                carry = false;
-            }
-
-            assert(value <= std::numeric_limits<underlying_type>::max());
-            result_data.emplace_back(static_cast<underlying_type>(value));
-        }
-
-        // Trim upper zeros
-        index = result_data.size();
-        while (index > 1 && result_data[--index] == 0) {
-            result_data.pop_back();
-        }
-
-        result_data.shrink_to_fit();
+        auto result_data = subtract_large_unsigned_integer_sorted(data, other_.data);
 
         bool result_sign = sign;
 
@@ -497,32 +408,15 @@ public:
         return { result_sign, result_data };
     }
 
-    std::strong_ordering operator<=>(const large_integer& other_) const {
+    constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer& other_) const {
         if (sign != other_.sign) {
             return sign ? std::strong_ordering::greater : std::strong_ordering::less;
         }
 
-        if (data.size() != other_.data.size()) {
-            return (data.size() < other_.data.size()) ? std::strong_ordering::less : std::strong_ordering::greater;
-        }
-
-#if __cpp_lib_ranges_zip >= 202110L
-        for (const auto& [lhs, rhs] : std::views::reverse(std::views::zip(data, other_.data))) {
-            if (lhs != rhs) {
-                return (lhs < rhs) ? std::strong_ordering::less : std::strong_ordering::greater;
-            }
-        }
-#else
-        auto [it_lhs, it_rhs] = std::ranges::mismatch(data | std::views::reverse, other_.data | std::views::reverse);
-        if (it_lhs != data.rend()) {
-            return (*it_lhs < *it_rhs) ? std::strong_ordering::less : std::strong_ordering::greater;
-        }
-#endif
-
-        return std::strong_ordering::equal;
+        return compare_large_unsigned_integer(data, other_.data);
     }
 
-    std::strong_ordering operator<=>(std::integral auto rhs_) const {
+    constexpr [[nodiscard]] std::strong_ordering operator<=>(std::integral auto rhs_) const {
         return *this <=> large_integer(rhs_);
     }
 
@@ -560,6 +454,142 @@ private:
         data.emplace_back(static_cast<underlying_type>(value_));
 
         return data;
+    }
+
+    static constexpr [[nodiscard]] collection_type add_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_) {
+        if (compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::less) {
+            return add_large_unsigned_integer_sorted(rhs_, lhs_);
+        }
+
+        return add_large_unsigned_integer_sorted(lhs_, rhs_);
+    }
+
+    static constexpr [[nodiscard]] collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
+        assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
+
+        std::vector<underlying_type> result_data(lhs_.size() + 1, 0);
+
+        size_t index = 0;
+        for (; index < rhs_.size(); ++index) {
+            const extended_type lhs = lhs_[index];
+            const extended_type rhs = rhs_[index];
+            const extended_type old_result = result_data[index];
+            const extended_type sum = lhs + rhs + old_result;
+
+            // Keep only the lower part that can be stored in underlying_type
+            result_data[index] = static_cast<underlying_type>(sum);
+
+            // Compute the overflow that cannot be stored
+            result_data[index + 1] = sum >> nb_extended_type_bits;
+        }
+
+        // Expand the overflow
+        for (; index < lhs_.size(); ++index) {
+            const extended_type lhs = lhs_[index];
+            const extended_type old_result = result_data[index];
+            const extended_type sum = lhs + old_result;
+
+            // Keep only the lower part that can be stored in underlying_type
+            result_data[index] = static_cast<underlying_type>(sum);
+
+            // Compute the overflow that cannot be stored
+            result_data[index + 1] = sum >> nb_extended_type_bits;
+        }
+
+        // TODO: Remove trimming duplication
+
+        // Trim upper zeros
+        index = result_data.size();
+        while (index > 1 && result_data[--index] == 0) {
+            result_data.pop_back();
+        }
+
+        result_data.shrink_to_fit();
+
+        return result_data;
+    }
+
+    static constexpr [[nodiscard]] collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
+        assert(lhs_.size() >= rhs_.size());
+
+        std::vector<underlying_type> result_data;
+        result_data.reserve(lhs_.size());
+
+        bool carry = false;
+        const size_t min_size = rhs_.size();
+        size_t index = 0;
+        for (; index < min_size; ++index) {
+            const signed_extended_type lhs = lhs_[index];
+            const signed_extended_type rhs = rhs_[index];
+
+            signed_extended_type value = lhs;
+            if (carry) {
+                --value;
+            }
+
+            if (value < rhs) {
+                value += base;
+                carry = true;
+            }
+            else {
+                carry = false;
+            }
+
+            extended_type diff = value - rhs;
+            assert(diff <= std::numeric_limits<underlying_type>::max());
+            result_data.emplace_back(static_cast<underlying_type>(diff));
+        }
+
+        for (; index < lhs_.size(); ++index) {
+            const signed_extended_type lhs = lhs_[index];
+            signed_extended_type value = lhs;
+            if (carry) {
+                --value;
+            }
+
+            if (value < 0) {
+                value += base;
+                carry = true;
+            }
+            else {
+                carry = false;
+            }
+
+            assert(value <= std::numeric_limits<underlying_type>::max());
+            result_data.emplace_back(static_cast<underlying_type>(value));
+        }
+
+        // Trim upper zeros
+        index = result_data.size();
+        while (index > 1 && result_data[--index] == 0) {
+            result_data.pop_back();
+        }
+
+        result_data.shrink_to_fit();
+
+        return result_data;
+    }
+
+    static constexpr [[nodiscard]] std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_)
+    {
+        if (lhs_.size() != rhs_.size()) {
+            return (lhs_.size() < rhs_.size()) ? std::strong_ordering::less : std::strong_ordering::greater;
+        }
+
+#if __cpp_lib_ranges_zip >= 202110L
+        for (const auto& [lhs, rhs] : std::views::reverse(std::views::zip(lhs_, rhs_))) {
+            if (lhs != rhs) {
+                return (lhs < rhs) ? std::strong_ordering::less : std::strong_ordering::greater;
+            }
+        }
+#else
+        auto [it_lhs, it_rhs] = std::ranges::mismatch(lhs_ | std::views::reverse, rhs_ | std::views::reverse);
+        if (it_lhs != lhs_.rend()) {
+            return (*it_lhs < *it_rhs) ? std::strong_ordering::less : std::strong_ordering::greater;
+        }
+#endif
+
+        return std::strong_ordering::equal;
     }
 
     bool sign{};
