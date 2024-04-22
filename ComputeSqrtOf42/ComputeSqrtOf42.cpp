@@ -316,103 +316,24 @@ public:
     constexpr large_integer(const char* str_) : large_integer(from_string(str_)) {}
     constexpr large_integer(const std::string& str_) : large_integer(from_string(str_)) {}
 
-    constexpr large_integer operator-() const {
+    constexpr [[nodiscard]] large_integer operator-() const {
         return { !sign, data };
     }
 
-    constexpr large_integer operator+(const large_integer& other_) const {
-        if (sign != other_.sign) {
-            return *this - large_integer(!other_.sign, other_.data);
-        }
-
-        if (*this < other_) {
-            return other_ + *this;
-        }
-
-        auto result_data = add_large_unsigned_integer_sorted(data, other_.data);
-
-        bool result_sign = sign;
-
-        // Handle the -0 case
-        if (result_data == collection_type{ 0 }) {
-            result_sign = false;
-        }
-
-        return { result_sign, result_data };
+    constexpr [[nodiscard]] large_integer operator+(const large_integer& other_) const {
+        return large_integer_data_ref(*this) + large_integer_data_ref(other_);
     }
 
-    large_integer operator-(const large_integer& other_) const {
-        if (sign != other_.sign) {
-            return *this + large_integer(!other_.sign, other_.data);
-        }
-
-        if (*this < other_) {
-            return -(other_ - *this);
-        }
-
-        auto result_data = subtract_large_unsigned_integer_sorted(data, other_.data);
-
-        bool result_sign = sign;
-
-        // Handle the -0 case
-        if (result_data == collection_type{ 0 }) {
-            result_sign = false;
-        }
-
-        return { result_sign, result_data };
+    constexpr [[nodiscard]] large_integer operator-(const large_integer& other_) const {
+        return large_integer_data_ref(*this) - large_integer_data_ref(other_);
     }
 
-    large_integer operator*(const large_integer& other_) const {
-        // Enforce lhs to be larger than rhs
-        if (data.size() < other_.data.size()) {
-            return other_ * *this;
-        }
-
-        bool result_sign = sign != other_.sign;
-
-        collection_type result_data(data.size() * other_.data.size() + 1, 0);
-
-        size_t result_index = 0;
-        for (size_t rhs_index = 0; rhs_index < other_.data.size(); ++rhs_index) {
-            extended_type overflow{ 0 };
-            result_index = rhs_index;
-            for (const extended_type lhs : data) {
-                const extended_type rhs = other_.data[rhs_index];
-                const extended_type old_result = result_data[result_index];
-
-                extended_type value = lhs * rhs + overflow + old_result;
-                result_data[result_index] = static_cast<underlying_type>(value);
-
-                overflow = value >> nb_extended_type_bits;
-
-                ++result_index;
-            }
-
-            result_data[result_index] = static_cast<underlying_type>(overflow);
-        }
-
-        // Trim upper zeros
-        size_t index = result_data.size();
-        while (index > 1 && result_data[--index] == 0) {
-            result_data.pop_back();
-        }
-
-        result_data.shrink_to_fit();
-
-        // Handle the -0 case
-        if (result_data == collection_type{ 0 }) {
-            result_sign = false;
-        }
-
-        return { result_sign, result_data };
+    constexpr [[nodiscard]] large_integer operator*(const large_integer& other_) const {
+        return large_integer_data_ref(*this) * large_integer_data_ref(other_);
     }
 
     constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer& other_) const {
-        if (sign != other_.sign) {
-            return sign ? std::strong_ordering::greater : std::strong_ordering::less;
-        }
-
-        return compare_large_unsigned_integer(data, other_.data);
+        return large_integer_data_ref(*this) <=> large_integer_data_ref(other_);
     }
 
     constexpr [[nodiscard]] std::strong_ordering operator<=>(std::integral auto rhs_) const {
@@ -430,6 +351,112 @@ public:
 private:
     friend constexpr large_integer from_string(const std::string& str_);
     friend constexpr std::string to_string(const large_integer& value_);
+
+    class large_integer_data_ref {
+    public:
+        constexpr large_integer_data_ref(const large_integer& other_) : large_integer_data_ref(other_.sign, std::cref(other_.data)) {}
+        constexpr large_integer_data_ref(bool sign_, const std::vector<underlying_type>& data_) : sign(sign_), data(std::cref(data_)) {}
+
+        constexpr [[nodiscard]] large_integer operator+(const large_integer_data_ref& other_) const {
+            if (sign != other_.sign) {
+                return *this - large_integer_data_ref(!other_.sign, other_.data.get());
+            }
+
+            if (*this < other_) {
+                return other_ + *this;
+            }
+
+            auto result_data = add_large_unsigned_integer_sorted(data.get(), other_.data.get());
+
+            bool result_sign = sign;
+
+            // Handle the -0 case
+            if (result_data == collection_type{ 0 }) {
+                result_sign = false;
+            }
+
+            return { result_sign, result_data };
+        }
+
+        constexpr [[nodiscard]] large_integer operator-(const large_integer_data_ref& other_) const {
+            if (sign != other_.sign) {
+                return *this + large_integer_data_ref(!other_.sign, other_.data.get());
+            }
+
+            if (*this < other_) {
+                auto result = other_ - *this;
+                return { !result.sign, std::move(result.data) };
+            }
+
+            auto result_data = subtract_large_unsigned_integer_sorted(data.get(), other_.data.get());
+
+            bool result_sign = sign;
+
+            // Handle the -0 case
+            if (result_data == collection_type{ 0 }) {
+                result_sign = false;
+            }
+
+            return { result_sign, result_data };
+        }
+
+        constexpr [[nodiscard]] large_integer operator*(const large_integer_data_ref& other_) const {
+            // Enforce lhs to be larger than rhs
+            if (data.get().size() < other_.data.get().size()) {
+                return other_ * *this;
+            }
+
+            bool result_sign = sign != other_.sign;
+
+            collection_type result_data(data.get().size() * other_.data.get().size() + 1, 0);
+
+            size_t result_index = 0;
+            for (size_t rhs_index = 0; rhs_index < other_.data.get().size(); ++rhs_index) {
+                extended_type overflow{ 0 };
+                result_index = rhs_index;
+                for (const extended_type lhs : data.get()) {
+                    const extended_type rhs = other_.data.get()[rhs_index];
+                    const extended_type old_result = result_data[result_index];
+
+                    extended_type value = lhs * rhs + overflow + old_result;
+                    result_data[result_index] = static_cast<underlying_type>(value);
+
+                    overflow = value >> nb_extended_type_bits;
+
+                    ++result_index;
+                }
+
+                result_data[result_index] = static_cast<underlying_type>(overflow);
+            }
+
+            // Trim upper zeros
+            size_t index = result_data.size();
+            while (index > 1 && result_data[--index] == 0) {
+                result_data.pop_back();
+            }
+
+            result_data.shrink_to_fit();
+
+            // Handle the -0 case
+            if (result_data == collection_type{ 0 }) {
+                result_sign = false;
+            }
+
+            return { result_sign, result_data };
+        }
+
+        constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer_data_ref& other_) const {
+            if (sign != other_.sign) {
+                return sign ? std::strong_ordering::greater : std::strong_ordering::less;
+            }
+
+            return compare_large_unsigned_integer(data, other_.data);
+        }
+
+    private:
+        bool sign{};
+        std::reference_wrapper<const collection_type> data;
+    };
 
     constexpr large_integer(bool sign_, std::vector<underlying_type> data_) : sign(sign_), data(std::move(data_)) {}
 
@@ -455,6 +482,7 @@ private:
         return data;
     }
 
+    // TODO: Move this function back into the operator?
     static constexpr [[nodiscard]] collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
 
@@ -500,6 +528,7 @@ private:
         return result_data;
     }
 
+    // TODO: Move this function back into the operator?
     static constexpr [[nodiscard]] collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(lhs_.size() >= rhs_.size());
 
@@ -561,6 +590,7 @@ private:
         return result_data;
     }
 
+    // TODO: Move this function back into the operator?
     static constexpr [[nodiscard]] std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_)
     {
         if (lhs_.size() != rhs_.size()) {
