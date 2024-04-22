@@ -1,5 +1,4 @@
-﻿// ComputeSqrtOf42.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+﻿// Output the square root of 42 in different ways
 
 #include <charconv>
 #include <cmath>
@@ -16,11 +15,17 @@
 #include <catch2/catch_session.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#define SQRT42 6.480740698407860230965967436088
+// ----------------------------------------------------------------------------
+// Arbitrarily long definition of sqrt(42)
+#define SQRT42 6.480740698407860230965967436087996657705204307058346549711354397809617377844044371400360906605610236
 
+// ----------------------------------------------------------------------------
+// Constant expression of sqrt(42)
 template<typename T>
 inline constexpr T sqrt42 = static_cast<T>(SQRT42);
 
+// ----------------------------------------------------------------------------
+// Print value to the console with the specified format using std::printf
 template<typename T>
 void print_using_std_printf(const char* format_, unsigned int counter_, T value_)
 {
@@ -32,37 +37,19 @@ void print_using_std_printf(const char* format_, unsigned int counter_, T value_
     }
 }
 
+namespace details {
 
-double sq_root_newton(double a, double precision)
-{
-    double x_0 = 1, x;
-    double temp = 0;
-    int i = 0;
-
-    while (true)
-    {
-        x = 0.5 * (x_0 + a / x_0);
-        ++i;
-        if (i > 2)
-            if (abs(x - temp) < precision)
-            {
-                return x;
-                break;
-            }
-            else
-            {
-                temp = x_0;
-                x_0 = x;
-                temp = x;
-            }
-    }
-}
-
+// ----------------------------------------------------------------------------
+// Split value into its fractional and exponent part with the exponent always even
+// fractional part is (-2, -1], [1, 2)
+// return [fractional, exponent]
 template<typename T>
 std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
 {
     int exponent{};
     T fractional = std::frexp(value_, &exponent);
+
+    // Check is exponent is odd by looking at the first bit
     if (exponent & 1) {
         if (exponent < 0) {
             fractional /= 2;
@@ -77,44 +64,33 @@ std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
     return { fractional, exponent };
 }
 
+//template<typename T, typename F>
+//auto compute_using
+
 template<typename T>
-auto square_root_binary_search_method(T value_) -> T {
-    if (!std::isfinite(value_)) {
-        return value_;
-    }
+auto compute_square_root_binary_search_method_fractional(T fractional) -> T {
+    assert(1 <= fractional && fractional < 2);
 
-    // Cannot calculate the root of a negative number
-    if (value_ < 0) {
-        return NAN;
-    }
-
-    // Early return for 0 or 1
-    if (value_ * value_ == value_) {
-        return value_;
-    }
-
-    const auto [fractional, exponent] = split_into_fractional_and_even_exponent(value_);
-
-    // Search from zero to value_ + 1
-    // If value_ is less than one, the root will be larger than value_, hence + 1
+    // Search from zero to fractional
+    // Since fractional is between [1,2) the sqrt will be between 0 and sqrt(2)
     T left = 0;
-    T right = fractional + 1;
+    T right = std::numbers::sqrt2_v<T>;
     T old = std::numeric_limits<T>::max();
 
     while (true) {
-
+        // Compute the middle point
         const T middle = std::lerp(left, right, T{ 0.5 });
 
-        // No more iteration
+        // No more convergence
         if (middle == old) {
-            return std::ldexp(middle, exponent / 2);
+            return middle;
         }
 
         const T square = middle * middle;
 
-        // Early return as the value was found
+        // Early return optimization as the value was found
         if (square == fractional) {
-            return std::ldexp(middle, exponent / 2);
+            return middle;
         }
 
         // Reduce the interval
@@ -129,28 +105,12 @@ auto square_root_binary_search_method(T value_) -> T {
     }
 }
 
-double square_root_binary_search_method(std::integral auto value_)
-{
-    return square_root_binary_search_method<double>(value_);
 }
 
-TEST_CASE("square_root_binary_search_method") {
-    REQUIRE(square_root_binary_search_method(0) == std::sqrt(0));
-    REQUIRE(square_root_binary_search_method(-0) == std::sqrt(-0));
-    REQUIRE(square_root_binary_search_method(1) == std::sqrt(1));
-    REQUIRE(square_root_binary_search_method(4) == std::sqrt(4));
-    REQUIRE_THAT(square_root_binary_search_method(2), Catch::Matchers::WithinAbs(std::sqrt(2), std::numeric_limits<double>::epsilon()));
-    REQUIRE_THAT(square_root_binary_search_method(780.14), Catch::Matchers::WithinAbs(std::sqrt(780.14), std::numeric_limits<double>::epsilon()));
-    REQUIRE_THAT(square_root_binary_search_method(0.5), Catch::Matchers::WithinAbs(std::sqrt(0.5), std::numeric_limits<double>::epsilon()));
-    
-    REQUIRE_THAT(square_root_binary_search_method(42), Catch::Matchers::WithinAbs(SQRT42/*std::sqrt(42)*/, std::numeric_limits<double>::epsilon()));
-
-    REQUIRE_THAT(square_root_binary_search_method(1e-15), Catch::Matchers::WithinAbs(std::sqrt(1e-15), std::numeric_limits<double>::epsilon()));
-    REQUIRE_THAT(square_root_binary_search_method(1e-300), Catch::Matchers::WithinAbs(std::sqrt(1e-300), std::numeric_limits<double>::epsilon()));
-}
-
+// ----------------------------------------------------------------------------
+// Compute the square root using a binary search
 template<typename T>
-auto square_root_heron_method(T value_) -> T {
+auto compute_square_root_binary_search_method(T value_) -> T {
     if (!std::isfinite(value_)) {
         return value_;
     }
@@ -164,8 +124,70 @@ auto square_root_heron_method(T value_) -> T {
     if (value_ * value_ == value_) {
         return value_;
     }
+
+    // Split the problem into the fractional part and the exponent since:
+    // sqrt(frac*2^exp)
+    // sqrt(frac)*sqrt(2^exp)
+    // sqrt(frac)*2^(exp/2)
+    // To make this optimization works the exponent must be even
+    // This is less optimal when value is a perfect square
+    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
+
+    const auto result = details::compute_square_root_binary_search_method_fractional(fractional);
+
+    // Reconstruct the result
+    return std::ldexp(result, exponent / 2);
+}
+
+// ----------------------------------------------------------------------------
+// Overload for integral value
+double compute_square_root_binary_search_method(std::integral auto value_)
+{
+    return compute_square_root_binary_search_method<double>(value_);
+}
+
+// ----------------------------------------------------------------------------
+// Test cases
+TEST_CASE("compute_square_root_binary_search_method") {
+    REQUIRE(compute_square_root_binary_search_method(0) == std::sqrt(0));
+    REQUIRE(compute_square_root_binary_search_method(-0) == std::sqrt(-0));
+    REQUIRE(compute_square_root_binary_search_method(1) == std::sqrt(1));
+    REQUIRE(compute_square_root_binary_search_method(4) == std::sqrt(4));
+    REQUIRE_THAT(compute_square_root_binary_search_method(2), Catch::Matchers::WithinAbs(std::sqrt(2), std::numeric_limits<double>::epsilon()));
+    REQUIRE_THAT(compute_square_root_binary_search_method(780.14), Catch::Matchers::WithinAbs(std::sqrt(780.14), std::numeric_limits<double>::epsilon()));
+    REQUIRE_THAT(compute_square_root_binary_search_method(0.5), Catch::Matchers::WithinAbs(std::sqrt(0.5), std::numeric_limits<double>::epsilon()));
     
-    const auto [fractional, exponent] = split_into_fractional_and_even_exponent(value_);
+    REQUIRE_THAT(compute_square_root_binary_search_method(42), Catch::Matchers::WithinAbs(SQRT42/*std::sqrt(42)*/, std::numeric_limits<double>::epsilon()));
+
+    REQUIRE_THAT(compute_square_root_binary_search_method(1e-15), Catch::Matchers::WithinAbs(std::sqrt(1e-15), std::numeric_limits<double>::epsilon()));
+    REQUIRE_THAT(compute_square_root_binary_search_method(1e-300), Catch::Matchers::WithinAbs(std::sqrt(1e-300), std::numeric_limits<double>::epsilon()));
+}
+
+// ----------------------------------------------------------------------------
+// Compute the square root using heron's method
+template<typename T>
+auto compute_square_root_heron_method(T value_) -> T {
+    if (!std::isfinite(value_)) {
+        return value_;
+    }
+
+    // Cannot calculate the root of a negative number
+    if (value_ < 0) {
+        return NAN;
+    }
+
+    // Early return for 0 or 1
+    if (value_ * value_ == value_) {
+        return value_;
+    }
+
+    // Split the problem into the fractional part and the exponent since:
+    // sqrt(frac*2^exp)
+    // sqrt(frac)*sqrt(2^exp)
+    // sqrt(frac)*2^(exp/2)
+    // To make this optimization works the exponent must be even
+    // This is less optimal when value is a perfect square
+    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
 
     T x = fractional / 2;
     T old = x;
@@ -181,29 +203,31 @@ auto square_root_heron_method(T value_) -> T {
     }
 }
 
-double square_root_heron_method(std::integral auto value_)
+// ----------------------------------------------------------------------------
+// Overload for integral value
+double compute_square_root_heron_method(std::integral auto value_)
 {
-    return square_root_heron_method<double>(value_);
+    return compute_square_root_heron_method<double>(value_);
 }
 
-TEST_CASE("square_root_herons_method") {
-    CHECK(square_root_heron_method(0) == std::sqrt(0));
-    CHECK(square_root_heron_method(-0) == std::sqrt(-0));
-    CHECK(square_root_heron_method(1) == std::sqrt(1));
-    CHECK(square_root_heron_method(4) == std::sqrt(4));
-    CHECK_THAT(square_root_heron_method(2), Catch::Matchers::WithinAbs(std::sqrt(2), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_heron_method(780.14), Catch::Matchers::WithinAbs(std::sqrt(780.14), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_heron_method(0.5), Catch::Matchers::WithinAbs(std::sqrt(0.5), std::numeric_limits<double>::epsilon()));
+TEST_CASE("compute_square_root_heron_method") {
+    CHECK(compute_square_root_heron_method(0) == std::sqrt(0));
+    CHECK(compute_square_root_heron_method(-0) == std::sqrt(-0));
+    CHECK(compute_square_root_heron_method(1) == std::sqrt(1));
+    CHECK(compute_square_root_heron_method(4) == std::sqrt(4));
+    CHECK_THAT(compute_square_root_heron_method(2), Catch::Matchers::WithinAbs(std::sqrt(2), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_heron_method(780.14), Catch::Matchers::WithinAbs(std::sqrt(780.14), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_heron_method(0.5), Catch::Matchers::WithinAbs(std::sqrt(0.5), std::numeric_limits<double>::epsilon()));
 
-    CHECK_THAT(square_root_heron_method(42), Catch::Matchers::WithinAbs(SQRT42/*std::sqrt(42)*/, std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_heron_method(42), Catch::Matchers::WithinAbs(SQRT42/*std::sqrt(42)*/, std::numeric_limits<double>::epsilon()));
 
-    CHECK_THAT(square_root_heron_method(1e-15), Catch::Matchers::WithinAbs(std::sqrt(1e-15), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_heron_method(2.2e-300), Catch::Matchers::WithinAbs(std::sqrt(2.2e-300), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_heron_method(1e-15), Catch::Matchers::WithinAbs(std::sqrt(1e-15), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_heron_method(2.2e-300), Catch::Matchers::WithinAbs(std::sqrt(2.2e-300), std::numeric_limits<double>::epsilon()));
 }
 
 
 template<typename T>
-auto square_root_bakhshali_method(T value_) -> T {
+auto compute_square_root_bakhshali_method(T value_) -> T {
     if (!std::isfinite(value_)) {
         return value_;
     }
@@ -218,7 +242,7 @@ auto square_root_bakhshali_method(T value_) -> T {
         return value_;
     }
 
-    const auto [fractional, exponent] = split_into_fractional_and_even_exponent(value_);
+    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
 
     T x = fractional / 2;
     T old = std::numeric_limits<T>::max();
@@ -240,25 +264,25 @@ auto square_root_bakhshali_method(T value_) -> T {
     }
 }
 
-double square_root_bakhshali_method(std::integral auto value_)
+double compute_square_root_bakhshali_method(std::integral auto value_)
 {
-    return square_root_bakhshali_method<double>(value_);
+    return compute_square_root_bakhshali_method<double>(value_);
 }
 
-TEST_CASE("square_root_bakhshali_method") {
-    CHECK(square_root_bakhshali_method(0) == std::sqrt(0));
-    CHECK(square_root_bakhshali_method(-0) == std::sqrt(-0));
-    CHECK(square_root_bakhshali_method(1) == std::sqrt(1));
-    CHECK(square_root_bakhshali_method(4) == std::sqrt(4));
-    CHECK_THAT(square_root_bakhshali_method(2), Catch::Matchers::WithinAbs(std::sqrt(2), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_bakhshali_method(780.14), Catch::Matchers::WithinAbs(std::sqrt(780.14), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_bakhshali_method(0.5), Catch::Matchers::WithinAbs(std::sqrt(0.5), std::numeric_limits<double>::epsilon()));
+TEST_CASE("compute_square_root_bakhshali_method") {
+    CHECK(compute_square_root_bakhshali_method(0) == std::sqrt(0));
+    CHECK(compute_square_root_bakhshali_method(-0) == std::sqrt(-0));
+    CHECK(compute_square_root_bakhshali_method(1) == std::sqrt(1));
+    CHECK(compute_square_root_bakhshali_method(4) == std::sqrt(4));
+    CHECK_THAT(compute_square_root_bakhshali_method(2), Catch::Matchers::WithinAbs(std::sqrt(2), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_bakhshali_method(780.14), Catch::Matchers::WithinAbs(std::sqrt(780.14), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_bakhshali_method(0.5), Catch::Matchers::WithinAbs(std::sqrt(0.5), std::numeric_limits<double>::epsilon()));
 
-    CHECK_THAT(square_root_bakhshali_method(42), Catch::Matchers::WithinAbs(SQRT42/*std::sqrt(42)*/, std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_bakhshali_method(42), Catch::Matchers::WithinAbs(SQRT42/*std::sqrt(42)*/, std::numeric_limits<double>::epsilon()));
 
-    CHECK_THAT(square_root_bakhshali_method(1e-15), Catch::Matchers::WithinAbs(std::sqrt(1e-15), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_bakhshali_method(1e-300), Catch::Matchers::WithinAbs(std::sqrt(1e-300), std::numeric_limits<double>::epsilon()));
-    CHECK_THAT(square_root_bakhshali_method(2.2e-300), Catch::Matchers::WithinAbs(std::sqrt(2.2e-300), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_bakhshali_method(1e-15), Catch::Matchers::WithinAbs(std::sqrt(1e-15), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_bakhshali_method(1e-300), Catch::Matchers::WithinAbs(std::sqrt(1e-300), std::numeric_limits<double>::epsilon()));
+    CHECK_THAT(compute_square_root_bakhshali_method(2.2e-300), Catch::Matchers::WithinAbs(std::sqrt(2.2e-300), std::numeric_limits<double>::epsilon()));
 }
 
 
@@ -806,8 +830,8 @@ TEST_CASE("large_integer") {
 
 
 //template<typename T>
-//std::string square_root_digit_by_digit_method(T value_, unsigned int max_precision_) {
-std::string square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+//std::string compute_square_root_digit_by_digit_method(T value_, unsigned int max_precision_) {
+std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     //if (!std::isfinite(value_)) {
     //    return std::to_string(value_);
     //}
@@ -972,25 +996,25 @@ std::string square_root_digit_by_digit_method(std::integral auto value_, unsigne
     return result_string;
 }
 
-//std::string square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-//    return square_root_digit_by_digit_method<double>(value_, max_precision_);
+//std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+//    return compute_square_root_digit_by_digit_method<double>(value_, max_precision_);
 //}
 
-TEST_CASE("square_root_digit_by_digit_method") {
+TEST_CASE("compute_square_root_digit_by_digit_method") {
     using namespace std::string_literals;
-    CHECK(square_root_digit_by_digit_method(-1, 2) == "nan"s);
-    CHECK(square_root_digit_by_digit_method(0, 0) == "0"s);
-    CHECK(square_root_digit_by_digit_method(-0, 0) == "0"s);
-    CHECK(square_root_digit_by_digit_method(1, 0) == "1"s);
-    CHECK(square_root_digit_by_digit_method(4, 0) == "2"s);
-    //CHECK(square_root_digit_by_digit_method(2, 31) == "1.4142135623730950488016887242097"s);
-    //CHECK(square_root_digit_by_digit_method(780.14, 30) == "27.930986377140353329545077471771"s);
-    //CHECK(square_root_digit_by_digit_method(0.5, 32) == "0.70710678118654752440084436210485"s);
+    CHECK(compute_square_root_digit_by_digit_method(-1, 2) == "nan"s);
+    CHECK(compute_square_root_digit_by_digit_method(0, 0) == "0"s);
+    CHECK(compute_square_root_digit_by_digit_method(-0, 0) == "0"s);
+    CHECK(compute_square_root_digit_by_digit_method(1, 0) == "1"s);
+    CHECK(compute_square_root_digit_by_digit_method(4, 0) == "2"s);
+    //CHECK(compute_square_root_digit_by_digit_method(2, 31) == "1.4142135623730950488016887242097"s);
+    //CHECK(compute_square_root_digit_by_digit_method(780.14, 30) == "27.930986377140353329545077471771"s);
+    //CHECK(compute_square_root_digit_by_digit_method(0.5, 32) == "0.70710678118654752440084436210485"s);
 
-    CHECK(square_root_digit_by_digit_method(42, 31) == "6.480740698407860230965967436088"s);
-    CHECK(square_root_digit_by_digit_method(42, 100) == "6.480740698407860230965967436087996657705204307058346549711354397809617377844044371400360906605610236"s);
+    CHECK(compute_square_root_digit_by_digit_method(42, 31) == "6.480740698407860230965967436088"s);
+    CHECK(compute_square_root_digit_by_digit_method(42, 100) == "6.480740698407860230965967436087996657705204307058346549711354397809617377844044371400360906605610236"s);
 
-    //CHECK(square_root_digit_by_digit_method(1e-15, 38) == "0.00000031622776601683793319988935444327"s);
+    //CHECK(compute_square_root_digit_by_digit_method(1e-15, 38) == "0.00000031622776601683793319988935444327"s);
 }
 
 
@@ -1041,10 +1065,10 @@ int main(int argc, const char* argv[])
 
     std::cout << ++counter << ". Using std::pow: " << std::pow(42.0l, 0.5l) << '\n';
 
-    std::cout << ++counter << ". Using custom function using Newton's method: " << square_root_binary_search_method(42) << '\n';
-    std::cout << ++counter << ". Using custom function using Heron's method: " << square_root_heron_method(42) << '\n';
-    std::cout << ++counter << ". Using custom function using Bakhshali's method: " << square_root_bakhshali_method(42) << '\n';
-    std::cout << ++counter << ". Using infinite digits (only show 1k): " << square_root_digit_by_digit_method(42, 1'000) << '\n';
+    std::cout << ++counter << ". Using custom function using Newton's method: " << compute_square_root_binary_search_method(42) << '\n';
+    std::cout << ++counter << ". Using custom function using Heron's method: " << compute_square_root_heron_method(42) << '\n';
+    std::cout << ++counter << ". Using custom function using Bakhshali's method: " << compute_square_root_bakhshali_method(42) << '\n';
+    std::cout << ++counter << ". Using infinite digits (only show 1k): " << compute_square_root_digit_by_digit_method(42, 1'000) << '\n';
 
     // Using my own sqrt function
     // Using recursion and using loop
