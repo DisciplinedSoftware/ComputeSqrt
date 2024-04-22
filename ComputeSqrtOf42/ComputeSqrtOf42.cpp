@@ -12,6 +12,7 @@
 #include <span>
 #include <string>
 
+// TODO: Replace catch2 with a custom test framework
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -288,16 +289,14 @@ TEST_CASE("compute_square_root_bakhshali_method") {
 }
 
 
-// Replace catch2 with a custom test framework
-//
-// Implement a version that stream the digits
-// For the digits by digits, add rounding for the last digit
-// 
-// Modify implementations to avoid data copies when signs are different
+
+// TODO: Implement a version that stream the digits
+
+// TODO: Modify implementations to avoid data copies when signs are different
 // This can also be achieved by moving operations to functions that always take the large_integer_using_ref_to_data
 
 class large_integer;
-large_integer from_string(const std::string& str_);
+constexpr large_integer from_string(const std::string& str_);
 
 class large_integer {
 public:
@@ -310,12 +309,12 @@ public:
     static constexpr auto nb_extended_type_bits = sizeof(underlying_type) * 8;
     static constexpr const extended_type base = extended_type{ 1 } << nb_extended_type_bits;
 
-    large_integer() : large_integer(false, { 0 } ) {}
+    constexpr large_integer() : large_integer(false, { 0 } ) {}
 
-    large_integer(std::integral auto value_) : large_integer(value_ < 0, to_data_collection(value_)) {}
+    constexpr large_integer(std::integral auto value_) : large_integer(value_ < 0, to_data_collection(value_)) {}
 
-    large_integer(const char* str_) : large_integer(from_string(str_)) {}
-    large_integer(const std::string& str_) : large_integer(from_string(str_)) {}
+    constexpr large_integer(const char* str_) : large_integer(from_string(str_)) {}
+    constexpr large_integer(const std::string& str_) : large_integer(from_string(str_)) {}
 
     large_integer operator-() const {
         return { !sign, data };
@@ -536,8 +535,8 @@ public:
     }
 
 private:
-    friend std::ostream& operator<<(std::ostream& stream_, const large_integer& value_);
-    friend std::istream& operator>>(std::istream& stream_, large_integer& value_);
+    friend constexpr large_integer from_string(const std::string& str_);
+    friend constexpr std::string to_string(const large_integer& value_);
 
     constexpr large_integer(bool sign_, std::vector<underlying_type> data_) : sign(sign_), data(std::move(data_)) {}
 
@@ -610,7 +609,7 @@ bool operator==(std::integral auto lhs_, const large_integer& rhs_) {
 namespace details {
 
 // A function to perform division of large numbers
-std::string divide_integer_as_string_by_integer(const std::string& number, large_integer::extended_type divisor) {
+constexpr [[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number, large_integer::extended_type divisor) {
     // As result can be very large store it in string
     std::string ans;
 
@@ -638,7 +637,7 @@ std::string divide_integer_as_string_by_integer(const std::string& number, large
     return ans;
 }
 
-large_integer::extended_type modulo_integer_as_string_by_integer(const std::string& num, large_integer::extended_type a)
+constexpr [[nodiscard]] large_integer::extended_type modulo_integer_as_string_by_integer(const std::string& num, large_integer::extended_type a)
 {
     // Initialize result
     large_integer::extended_type res = 0;
@@ -652,35 +651,40 @@ large_integer::extended_type modulo_integer_as_string_by_integer(const std::stri
 
 }
 
-std::istream& operator>>(std::istream& stream_, large_integer& value_) {
-    if (!stream_) {
-        value_ = large_integer();
-        return stream_;
+constexpr [[nodiscard]] large_integer from_string(const std::string& str_) {
+    if (str_.empty()) {
+        // TODO: This should probably throw
+        return {};
     }
 
+    bool sign = false;
+    auto begin = std::begin(str_);
+    if (str_[0] == '-') {
+        sign = true;
+        ++begin;
+        // TODO: Add error management
+        // this will throw if the number is ill-formed with "-"
+    }
+
+    std::string number(begin, std::end(str_));
+
+    std::vector<large_integer::underlying_type> data;
+    do {
+        data.emplace_back(static_cast<large_integer::underlying_type>(details::modulo_integer_as_string_by_integer(number, large_integer::base)));
+        number = details::divide_integer_as_string_by_integer(number, large_integer::base);
+    } while (number != "0");
+
+    return { sign, data };
+}
+
+std::istream& operator>>(std::istream& stream_, large_integer& value_) {
+    // Assume that the rdbuf exist and that the number is fully contains in the buffer
     assert(stream_.rdbuf() != nullptr);
     const std::streamsize size = stream_.rdbuf()->in_avail();
     std::string number(size, 0);
     stream_.read(number.data(), size);
 
-    bool sign = false;
-    if (!number.empty() && number[0] == '-') {
-        sign = true;
-        number[0] = '0';
-    }
-
-    std::vector<large_integer::underlying_type> data;
-    while (number != "0") {
-        data.emplace_back(static_cast<large_integer::underlying_type>(details::modulo_integer_as_string_by_integer(number, large_integer::base)));
-        number = details::divide_integer_as_string_by_integer(number, large_integer::base);
-    }
-
-    assert(!data.empty());
-    if (data.empty()) {
-        data.emplace_back(0);
-    }
-
-    value_ = large_integer(sign, data);
+    value_ = from_string(number);
 
     return stream_;
 }
@@ -688,7 +692,7 @@ std::istream& operator>>(std::istream& stream_, large_integer& value_) {
 namespace details {
 
 // Function to add two strings representing large integers
-std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
+constexpr [[nodiscard]] std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
     assert(!lhs_.empty() && !rhs_.empty());
 
     if (lhs_.empty() && rhs_.empty()) {
@@ -730,7 +734,7 @@ std::string add_integers_as_string(const std::string& lhs_, const std::string& r
 }
 
 // Function to multiply a string representing a large integer by an integer
-std::string multiply_integer_as_string_by_integer(const std::string& num_, large_integer::extended_type factor_) {
+constexpr [[nodiscard]] std::string multiply_integer_as_string_by_integer(const std::string& num_, large_integer::extended_type factor_) {
     std::string result;
     large_integer::extended_type carry = 0;
     for (auto digit_str : std::views::reverse(num_)) {
@@ -748,7 +752,7 @@ std::string multiply_integer_as_string_by_integer(const std::string& num_, large
 }
 
 // Function to concatenate the vector elements into a single large integer represented as a string
-std::string concatenate_integers_to_string(const std::vector<large_integer::underlying_type>& data_) {
+constexpr [[nodiscard]] std::string concatenate_integers_to_string(const std::vector<large_integer::underlying_type>& data_) {
     std::string result = "0";
     for (size_t i = 0; i < data_.size(); ++i) {
         // Multiply the current element by the large_integer base
@@ -764,26 +768,19 @@ std::string concatenate_integers_to_string(const std::vector<large_integer::unde
 
 }
 
-std::ostream& operator<<(std::ostream& stream_, const large_integer& value_) {
-    assert(!value_.data.empty());
+constexpr [[nodiscard]] std::string to_string(const large_integer& value_) {
+    auto result = details::concatenate_integers_to_string(value_.data);
 
-    stream_ << (value_.sign ? "-" : "");
-    stream_ << details::concatenate_integers_to_string(value_.data);
+    if (value_.sign) {
+        return '-' + result;
+    }
 
-    return stream_;
-}
-
-[[nodiscard]] large_integer from_string(const std::string& str_) {
-    std::istringstream stream(str_);
-    large_integer result;
-    stream >> result;
     return result;
 }
 
-[[nodiscard]] std::string to_string(const large_integer& value_) {
-    std::ostringstream stream;
-    stream << value_;
-    return stream.str();
+std::ostream& operator<<(std::ostream& stream_, const large_integer& value_) {
+    stream_ << to_string(value_);
+    return stream_;
 }
 
 TEST_CASE("large_integer") {
