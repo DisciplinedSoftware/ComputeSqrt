@@ -1095,11 +1095,11 @@ int main(int argc, const char* argv[])
     print_using_std_printf("%d. Using std::printf with hexadecimal notation with double: %la\n", ++counter, sqrt42<double>);
     print_using_std_printf("%d. Using std::printf with hexadecimal notation with long double: %La\n", ++counter, sqrt42<long double>);
 
-    std::cout << ++counter << ". Using std::sqrt(float): " << std::sqrt(42.0f) << '\n';
-    std::cout << ++counter << ". Using std::sqrt(double): " << std::sqrt(42.0) << '\n';
-    std::cout << ++counter << ". Using std::sqrt(long double): " << std::sqrt(42.0l) << '\n';
-    std::cout << ++counter << ". Using std::sqrtf(float): " << std::sqrt(42.0f) << '\n';
-    std::cout << ++counter << ". Using std::sqrtl(long double): " << std::sqrt(42.0l) << '\n';
+    std::cout << ++counter << ". Using stream operator with a std::sqrt(float): " << std::sqrt(42.0f) << '\n';
+    std::cout << ++counter << ". Using stream operator with a std::sqrt(double): " << std::sqrt(42.0) << '\n';
+    std::cout << ++counter << ". Using stream operator with a std::sqrt(long double): " << std::sqrt(42.0l) << '\n';
+    std::cout << ++counter << ". Using stream operator with a std::sqrtf(float): " << std::sqrt(42.0f) << '\n';
+    std::cout << ++counter << ". Using stream operator with a std::sqrtl(long double): " << std::sqrt(42.0l) << '\n';
 
     std::cout << std::format("{:}. Using std::format with fix-point notation and float: {:.9f}\n", ++counter, sqrt42<float>);
     std::cout << std::format("{:}. Using std::format with fix-point notation and double: {:.17f}\n", ++counter, sqrt42<double>);
@@ -1120,17 +1120,30 @@ int main(int argc, const char* argv[])
     std::cout << ++counter << ". Using custom function using Bakhshali's method: " << compute_square_root_bakhshali_method(42) << '\n';
     std::cout << ++counter << ". Using infinite digits (only show 1k): " << compute_square_root_digit_by_digit_method(42, 1'000) << '\n';
 
-    // Using my own sqrt function
+    // TODO: Add computation time around each computing method
+
+    // Using quake3 approximation method
+    // Using Babylonian approximation method
+    // Using Log base 2 approximation and Newton's method
+    // Using Bakhshali approximation
+    // Using Babylonian method
     // Using recursion and using loop
     // Using an async task
-    // Using coroutine
     // Using a coroutine that return an infinite number of digits
     // Using a coroutine that use thread
-    // Using a math library?
-    // Using a different local
+    // Using a math library? -> not possible on most website
+    // Using a different local -> maybe not as it's gonna be a , instead of a .
     // Using template parameters
-    // As a reduced expression of prime factor sqrt(2)*sqrt(3)*sqrt(7)
     // Using 42^(1/2) with std::pow
+    // As a reduced expression of prime factor sqrt(2)*sqrt(3)*sqrt(7), since 2 and 3 are known and the others can be mapped at compile time
+
+    // I didn't use the following method as it's not portable, even if it's probably the fastest way to compute the square root of a value
+    //double inline __declspec (naked) __fastcall sqrt14(double n)
+    //{
+    //    _asm fld qword ptr[esp + 4]
+    //    _asm fsqrt
+    //    _asm ret 8
+    //}
 
     return result;
 }
