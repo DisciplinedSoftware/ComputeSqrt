@@ -1,0 +1,28 @@
+# Makefile
+
+# Variables
+GMP_VERSION := 6.2.1
+GMP_TAR := gmp-$(GMP_VERSION).tar.bz2
+GMP_URL := https://ftp.gnu.org/gnu/gmp/$(GMP_TAR)
+
+# Targets
+all: gmp
+
+gmp:
+	# Download GMP source
+	wget $(GMP_URL) -O $(GMP_TAR)
+	# Extract GMP source
+	tar -xvf $(GMP_TAR)
+	# Navigate into GMP directory
+	cd gmp-$(GMP_VERSION) && \
+		# Configure
+		./configure && \
+		# Build
+		make && \
+		# Install (optional)
+		make install
+	# Clean up
+	rm -rf gmp-$(GMP_VERSION) $(GMP_TAR)
+
+clean:
+	rm -rf gmp-$(GMP_VERSION) $(GMP_TAR)
