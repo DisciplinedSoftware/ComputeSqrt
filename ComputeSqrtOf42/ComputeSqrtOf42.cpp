@@ -97,6 +97,10 @@ auto compute_square_root_using_fractional_and_exponent_optimization(T value_, F&
     return std::ldexp(result, exponent / 2);
 }
 
+}
+
+namespace details {
+
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
 template<typename T>
@@ -112,7 +116,7 @@ auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
 
     while (true) {
         // Compute the middle point
-        const T middle = std::lerp(left, right, T{ 0.5 });
+        const T middle = std::midpoint(left, right);
 
         // No more convergence
         if (middle == old) {
@@ -171,53 +175,43 @@ TEST_CASE("compute_square_root_binary_search_method") {
     REQUIRE_THAT(compute_square_root_binary_search_method(1e-300), Catch::Matchers::WithinAbs(std::sqrt(1e-300), std::numeric_limits<double>::epsilon()));
 }
 
+namespace details {
+
 // ----------------------------------------------------------------------------
-// Compute the square root using heron's method
+// Compute square root of the fractional part
 template<typename T>
-auto compute_square_root_heron_method(T value_) -> T {
-    if (!std::isfinite(value_)) {
-        return value_;
-    }
-
-    // Cannot calculate the root of a negative number
-    if (value_ < 0) {
-        return NAN;
-    }
-
-    // Early return for 0 or 1
-    if (value_ * value_ == value_) {
-        return value_;
-    }
-
-    // Split the problem into the fractional part and the exponent since:
-    // sqrt(frac*2^exp)
-    // sqrt(frac)*sqrt(2^exp)
-    // sqrt(frac)*2^(exp/2)
-    // To make this optimization works the exponent must be even
-    // This is less optimal when value is a perfect square
-    const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
-
-    T x = fractional / 2;
+auto compute_square_root_heron_method_fractional(T fractional_) -> T {
+    T x = fractional_ / 2;
     T old = x;
 
     while (true) {
-        x = std::lerp(x, fractional / x, 0.5);
+        x = std::midpoint(x, fractional_ / x);
 
         if (x == old) {
-            return std::ldexp(x, exponent/2);
+            return x;
         }
 
         old = x;
     }
 }
 
+}
+
+// ----------------------------------------------------------------------------
+// Compute the square root using heron's method
+template<typename T>
+auto compute_square_root_heron_method(T value_) -> T {
+    return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_heron_method_fractional<T>);
+}
+
 // ----------------------------------------------------------------------------
 // Overload for integral value
-double compute_square_root_heron_method(std::integral auto value_)
-{
+double compute_square_root_heron_method(std::integral auto value_) {
     return compute_square_root_heron_method<double>(value_);
 }
 
+// ----------------------------------------------------------------------------
+// Test cases
 TEST_CASE("compute_square_root_heron_method") {
     CHECK(compute_square_root_heron_method(0) == std::sqrt(0));
     CHECK(compute_square_root_heron_method(-0) == std::sqrt(-0));
