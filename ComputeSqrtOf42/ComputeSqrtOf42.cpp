@@ -41,6 +41,29 @@ void print_using_std_printf(const char* format_, unsigned int counter_, T value_
 
 namespace details {
 
+template<std::floating_point T>
+constexpr auto compute_square_root_exception(T value_, std::invocable<T> auto func_) -> T {
+#if __cpp_lib_constexpr_cmath >= 202202L
+    if (!std::isfinite(value_)) {
+#else
+    if (value_ == NAN || value_ == std::numeric_limits<T>::infinity() || value_ == -std::numeric_limits<T>::infinity()) {
+#endif
+        return value_;
+    }
+
+    // Cannot calculate the root of a negative number
+    if (value_ < 0) {
+        return NAN;
+    }
+
+    // Early return for 0 or 1
+    if (value_ == T{ 0 } || value_ == T{ 1 }) {
+        return value_;
+    }
+
+    return func_(value_);
+}
+
 // ----------------------------------------------------------------------------
 // Split value into its fractional and exponent part with the exponent always even
 // fractional part is (-2, -0.25], [0.25, 2)
@@ -74,23 +97,14 @@ std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
 // sqrt(frac)*2^(exp/2)
 // To make this optimization works the exponent must be even
 // This is less optimal when the value is a perfect square
-template<typename T, typename F>
-auto compute_square_root_using_fractional_and_exponent_optimization(T value_, F&& func_) -> T {
-    if (!std::isfinite(value_)) {
-        return value_;
-    }
-
-    // Cannot calculate the root of a negative number
-    if (value_ < 0) {
-        return NAN;
-    }
-
+template<std::floating_point T>
+auto compute_square_root_using_fractional_and_exponent_optimization(T value_, std::invocable<T> auto func_) -> T {
     // Split the problem into the fractional and the exponent parts
     const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
 
     // Early return for 0 or 1
-    if (value_ == T{ 0 } || value_ == T{ 1 }) {
-        return value_;
+    if (fractional == T{ 0 } || fractional == T{ 1 }) {
+        return std::ldexp(fractional, exponent / 2);
     }
 
     const auto result = func_(fractional);
@@ -105,7 +119,7 @@ namespace details {
 
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
-template<typename T>
+template<std::floating_point T>
 auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
     assert(0 <= fractional_ && fractional_ < 2);
 
@@ -148,15 +162,16 @@ auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
 
 // ----------------------------------------------------------------------------
 // Compute the square root using a binary search
-template<typename T>
+template<std::floating_point T>
 auto compute_square_root_binary_search_method(T value_) -> T {
-    return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_binary_search_method_fractional<T>);
+    return details::compute_square_root_exception(value_, [](T value_) {
+        return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_binary_search_method_fractional<T>);
+        });
 }
 
 // ----------------------------------------------------------------------------
 // Overload for integral value
-double compute_square_root_binary_search_method(std::integral auto value_)
-{
+double compute_square_root_binary_search_method(std::integral auto value_) {
     return compute_square_root_binary_search_method<double>(value_);
 }
 
@@ -181,8 +196,8 @@ namespace details {
 
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
-template<typename T>
-auto compute_square_root_heron_method_fractional(T fractional_) -> T {
+template<std::floating_point T>
+constexpr auto compute_square_root_heron_method_fractional(T fractional_) -> T {
     T x = fractional_ / 2;
     T old = x;
 
@@ -201,15 +216,32 @@ auto compute_square_root_heron_method_fractional(T fractional_) -> T {
 
 // ----------------------------------------------------------------------------
 // Compute the square root using heron's method
-template<typename T>
+template<std::floating_point T>
 auto compute_square_root_heron_method(T value_) -> T {
-    return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_heron_method_fractional<T>);
+    return details::compute_square_root_exception(value_, [](T value_) {
+            return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_heron_method_fractional<T>);
+        });
 }
 
 // ----------------------------------------------------------------------------
 // Overload for integral value
 double compute_square_root_heron_method(std::integral auto value_) {
     return compute_square_root_heron_method<double>(value_);
+}
+
+// ----------------------------------------------------------------------------
+// Compute the square root using heron's method
+template<std::floating_point T>
+constexpr auto compute_square_root_heron_method_constexpr(T value_) -> T {
+    return details::compute_square_root_exception(value_, [](T value_) {
+            return details::compute_square_root_heron_method_fractional(value_);
+        });
+}
+
+// ----------------------------------------------------------------------------
+// Overload for integral value
+constexpr double compute_square_root_heron_method_constexpr(std::integral auto value_) {
+    return compute_square_root_heron_method_constexpr<double>(value_);
 }
 
 // ----------------------------------------------------------------------------
@@ -233,7 +265,7 @@ namespace details {
 
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
-template<typename T>
+template<std::floating_point T>
 auto compute_square_root_bakhshali_method_fractional(T fractional_) -> T {
     T x = fractional_ / 2;
     T old = std::numeric_limits<T>::max();
@@ -259,9 +291,11 @@ auto compute_square_root_bakhshali_method_fractional(T fractional_) -> T {
 
 // ----------------------------------------------------------------------------
 // Compute the square root using bakhshali's method
-template<typename T>
+template<std::floating_point T>
 auto compute_square_root_bakhshali_method(T value_) -> T {
-    return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_bakhshali_method_fractional<T>);
+    return details::compute_square_root_exception(value_, [](T value_) {
+            return details::compute_square_root_using_fractional_and_exponent_optimization(value_, details::compute_square_root_bakhshali_method_fractional<T>);
+        });
 }
 
 // ----------------------------------------------------------------------------
@@ -878,7 +912,7 @@ TEST_CASE("large_integer") {
 }
 
 
-
+// This method has been simplified and only supports computing the square root of integer value
 //template<typename T>
 //std::string compute_square_root_digit_by_digit_method(T value_, unsigned int max_precision_) {
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
@@ -1068,6 +1102,15 @@ TEST_CASE("compute_square_root_digit_by_digit_method") {
 }
 
 
+template<double Value>
+struct constexpr_type {
+    static constexpr double value = Value;
+};
+
+template<double Value>
+constexpr auto constexpr_type_v = constexpr_type<Value>::value;
+
+
 int main(int argc, const char* argv[])
 {
     int result = Catch::Session().run(argc, argv);
@@ -1115,6 +1158,9 @@ int main(int argc, const char* argv[])
 
     std::cout << ++counter << ". Using std::pow: " << std::pow(42.0l, 0.5l) << '\n';
 
+    // Pass the value to a template expression to ensure constant expression
+    std::cout << ++counter << ". Using custom function using constexpr Heron's method: " << constexpr_type_v<compute_square_root_heron_method_constexpr(42)> << '\n';
+
     std::cout << ++counter << ". Using custom function using Newton's method: " << compute_square_root_binary_search_method(42) << '\n';
     std::cout << ++counter << ". Using custom function using Heron's method: " << compute_square_root_heron_method(42) << '\n';
     std::cout << ++counter << ". Using custom function using Bakhshali's method: " << compute_square_root_bakhshali_method(42) << '\n';
@@ -1122,23 +1168,26 @@ int main(int argc, const char* argv[])
 
     // TODO: Add computation time around each computing method
 
-    // Using quake3 approximation method
-    // Using Babylonian approximation method
-    // Using Log base 2 approximation and Newton's method
-    // Using Bakhshali approximation
-    // Using Babylonian method
-    // Using recursion and using loop
-    // Using an async task
-    // Using a coroutine that return an infinite number of digits
-    // Using a coroutine that use thread
-    // Using a math library? -> not possible on most website
-    // Using a different local -> maybe not as it's gonna be a , instead of a .
-    // Using template parameters
-    // Using 42^(1/2) with std::pow
-    // As a reduced expression of prime factor sqrt(2)*sqrt(3)*sqrt(7), since 2 and 3 are known and the others can be mapped at compile time
+    // TODO: Use std::reduce instead of loops if possible with the help of a structure (overflow, data)
+    // TODO: Multi-thread large_integer operations and enable it using CRTP or an executor
 
-    // I didn't use the following method as it's not portable, even if it's probably the fastest way to compute the square root of a value
-    //double inline __declspec (naked) __fastcall sqrt14(double n)
+    // TODO: Implement different initial estimate methods
+    // TODO: Using quake3 approximation method (not portable)
+    // TODO: Using Babylonian approximation method
+    // TODO: Using Log base 2 approximation and Newton's method (undefined behavior as union is use to write to one type and read the other)
+    // TODO: Using Bakhshali approximation (only one iteration)
+    // TODO: Using recursion
+    // TODO: Using an async task
+    // TODO: Using a coroutine that return an infinite number of digits
+    // TODO: Using a coroutine that use thread (or an executor)
+    // TODO: Using a math library? -> not possible on most website
+    // TODO: Using a different locale -> maybe not as it's gonna be a ',' instead of a '.' (a little bit boring)
+    // TODO: Using constexpr method
+    // TODO: Using template parameters, to be computed at compile time
+    // TODO: As a reduced expression of prime factor sqrt(2)*sqrt(3)*sqrt(7)
+
+    // I didn't use the following method, even if it's probably the fastest way to compute the square root of a value, as it's not portable
+    //double inline __declspec (naked) __fastcall sqrt_asm(double n)
     //{
     //    _asm fld qword ptr[esp + 4]
     //    _asm fsqrt
