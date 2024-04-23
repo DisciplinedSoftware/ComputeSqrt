@@ -911,54 +911,41 @@ TEST_CASE("large_integer") {
 
 }
 
+// TODO: Generalize compute_square_root_digit_by_digit_method to handle both integers and floating point values
+// This new version should return a large_floating_point instead of a string
 
+// ----------------------------------------------------------------------------
 // This method has been simplified and only supports computing the square root of integer value
-//template<typename T>
-//std::string compute_square_root_digit_by_digit_method(T value_, unsigned int max_precision_) {
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-    //if (!std::isfinite(value_)) {
-    //    return std::to_string(value_);
-    //}
+    // NaN is a special case
+    if (value_ == NAN) {    // std::isfinite with integer is not mandatory
+        return std::to_string(NAN);
+    }
 
     // Cannot calculate the root of a negative number
     if (value_ < 0) {
         return std::to_string(NAN);
     }
 
+    // Early return optimization
     if (value_ == 0 || value_ == 1) {
-        //const size_t has_dot = (value_ != std::trunc(value_)) && (max_precision_ > 0) ? 1 : 0;
-        //const size_t nb_chars = 1 + has_dot + max_precision_;
-        //std::string str(nb_chars, '0');
-        //auto [ptr, error_code] = std::to_chars(str.data(), str.data() + nb_chars, value_, std::chars_format::fixed, max_precision_);
-        //if (error_code != std::errc()) {
-        //    std::cout << std::make_error_code(error_code).message() << '\n';
-        //}
-
-        //return { str.data(), ptr };
-
         return std::to_string(value_);
     }
 
+    // Compute integral part of the square root
     std::vector<unsigned int> integer_values;
 
-    //T integral{};
-    //auto fractional = std::modf(value_, &integral);
-
-    //T residual = integral;
     auto residual = value_;
-    //while (residual >= 1) {
     while (residual > 0) {
-        //integer_values.emplace_back(static_cast<unsigned int>(std::trunc(std::fmod(residual, T{ 100 }))));
         integer_values.emplace_back(static_cast<unsigned int>(residual % 100));
         residual /= 100;
     }
 
-    //if (integer_values.empty()) {
-    //    integer_values.emplace_back(0);
-    //}
-
     large_integer remainder{ 0 };
     large_integer result{ 0 };
+
+    // TODO: move this lambda to a function and return a structure that includes the digit, the remainder and the result
+
     auto compute_next_digit = [&remainder, &result](auto current_) {
             // find x * (20p + x) <= remainder*100+current
             large_integer current_remainder = remainder * 100 + current_;
@@ -993,25 +980,27 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         std::views::transform(compute_next_digit) |
         std::views::transform([](auto x) { assert(x < 10); return static_cast<std::string::value_type>(x) + '0'; });
 
-    std::string result_string = std::string(std::begin(integral_string_rng), std::end(integral_string_rng));
+    std::string result_string(std::begin(integral_string_rng), std::end(integral_string_rng));
 
-    if (/*fractional == 0 &&*/ remainder == 0) {
+    // Early return optimization when the number is a perfect square
+    if (remainder == 0) {
         return result_string;
     }
 
+    // Adjust precision according to the number of integral digits
     auto precision = max_precision_ > result_string.length() ? max_precision_ - result_string.length() : 0;
 
+    // Adjust capacity of result_string
     result_string.reserve(result_string.length() + precision + 1);
 
-    result_string += ".";
+    if (precision > 0) {
+        result_string += ".";
+    }
 
+    // Compute the fractional part
     constexpr unsigned int next_value = 0;
 
     while (precision > 0) {
-        //fractional *= 100;
-        //fractional = std::modf(fractional, &integral);
-        //auto next_value = static_cast<unsigned int>(std::trunc(integral))
-
         result_string += static_cast<std::string::value_type>(compute_next_digit(next_value)) + '0';
 
         if (remainder == 0) {
@@ -1021,68 +1010,58 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         --precision;
     }
 
-    //auto compute_next_digit_debug = [&remainder, &result](auto current_) {
-    //        //std::cout << "remainder" << '\n' << remainder << '\n';
-    //        //std::cout << "result" << '\n' << result << '\n';
-
-    //        // find x * (20p + x) <= remainder*100+current
-    //        large_integer current_remainder = remainder * 100 + current_;
-
-    //        //std::cout << "remainder * 100 + current_" << '\n' << current_remainder << '\n';
-
-    //        unsigned int x{ 0 };
-    //        large_integer sum{ 0 };
-    //        auto expanded_result = result * 20;
-
-    //        //std::cout << "result * 20" << '\n' << expanded_result << '\n';
-
-    //        while (true) {
-    //            ++x;
-
-    //            large_integer next_sum{ 0 };
-    //            next_sum = (expanded_result + x);
-
-    //            //std::cout << "expanded_result + x" << '\n' << next_sum << '\n';
-
-    //            next_sum = next_sum * x;
-
-    //            //std::cout << "next_sum * x" << '\n' << next_sum << '\n';
-
-    //            if (next_sum > current_remainder) {
-    //                --x;
-    //                break;
-    //            }
-
-    //            sum = next_sum;
-    //        }
-
-    //        assert(x < 10);
-
-    //        result = result * 10 + x;
-    //        remainder = current_remainder - sum;
-
-    //        std::cout << "current_remainder" << '\n' << current_remainder << '\n';
-    //        std::cout << "sum" << '\n' << sum << '\n';
-    //        std::cout << "current_remainder - sum" << '\n' << remainder << '\n';
-    //        std::cout << "result * 10 + x" << '\n' << result << '\n';
-
-    //        return x;
-    //    };
-
-    // Compute one more digit to round the last one
+    // Round the last digit
     const auto rounding_digit = compute_next_digit(next_value);
 
     const double last_digit = result_string.back() - '0';
     const double rounded_last_digit = std::round(last_digit + (static_cast<double>(rounding_digit) / 10.0));
 
-    result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
+    if (rounded_last_digit >= 10) {
+        result_string.back() = '0';
+        bool carry = true;
+        for (auto& digit : result_string | std::views::reverse | std::views::drop(1) | std::views::filter([](auto c) { return c != '.'; })) {
+            if (digit == '9') {
+                digit = '0';
+            }
+            else {
+                digit += 1;
+                carry = false;
+                break;
+            }
+        }
+
+        if (carry) {
+            result_string.insert(std::begin(result_string), '1');
+            const auto it = std::find(std::begin(result_string), std::end(result_string), '.');
+            if (it != std::end(result_string)) {
+                result_string.pop_back();
+            }
+        }
+    }
+    else {
+        result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
+    }
+
+    // trim 0s to the left
+    if (result_string.contains('.')) {
+        auto index = result_string.length() - 1;
+        while (index > 0) {
+            if (result_string[index] == '0') {
+                result_string.pop_back();
+            }
+            else {
+                break;
+            }
+        }
+    }
+
+    // If there is no more fractional value, remove the '.'
+    if (result_string.back() == '.') {
+        result_string.pop_back();
+    }
 
     return result_string;
 }
-
-//std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-//    return compute_square_root_digit_by_digit_method<double>(value_, max_precision_);
-//}
 
 TEST_CASE("compute_square_root_digit_by_digit_method") {
     using namespace std::string_literals;
@@ -1091,14 +1070,15 @@ TEST_CASE("compute_square_root_digit_by_digit_method") {
     CHECK(compute_square_root_digit_by_digit_method(-0, 0) == "0"s);
     CHECK(compute_square_root_digit_by_digit_method(1, 0) == "1"s);
     CHECK(compute_square_root_digit_by_digit_method(4, 0) == "2"s);
-    //CHECK(compute_square_root_digit_by_digit_method(2, 31) == "1.4142135623730950488016887242097"s);
-    //CHECK(compute_square_root_digit_by_digit_method(780.14, 30) == "27.930986377140353329545077471771"s);
-    //CHECK(compute_square_root_digit_by_digit_method(0.5, 32) == "0.70710678118654752440084436210485"s);
+    CHECK(compute_square_root_digit_by_digit_method(2, 32) == "1.4142135623730950488016887242097"s);
 
     CHECK(compute_square_root_digit_by_digit_method(42, 31) == "6.480740698407860230965967436088"s);
     CHECK(compute_square_root_digit_by_digit_method(42, 100) == "6.480740698407860230965967436087996657705204307058346549711354397809617377844044371400360906605610236"s);
 
-    //CHECK(compute_square_root_digit_by_digit_method(1e-15, 38) == "0.00000031622776601683793319988935444327"s);
+    CHECK(compute_square_root_digit_by_digit_method(99, 1) == "10"s);
+    CHECK(compute_square_root_digit_by_digit_method(99, 2) == "9.9"s);
+    CHECK(compute_square_root_digit_by_digit_method(9999, 3) == "100"s);
+    CHECK(compute_square_root_digit_by_digit_method(999999, 5) == "1000"s);
 }
 
 
