@@ -396,72 +396,57 @@ private:
         constexpr large_integer_data_ref(bool sign_, const std::vector<underlying_type>& data_) : sign(sign_), data(std::cref(data_)) {}
 
         constexpr [[nodiscard]] large_integer operator+(const large_integer_data_ref& other_) const {
+            // Enforce signs to be the same
             if (sign != other_.sign) {
                 return *this - large_integer_data_ref(!other_.sign, other_.data.get());
             }
 
+            // Enforce lhs to be larger than rhs
             if (*this < other_) {
                 return other_ + *this;
             }
 
+            bool result_sign = sign;
             auto result_data = add_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-            bool result_sign = sign;
-
-            return cleanup({ result_sign, result_data });
+            return cleanup({ result_sign, std::move(result_data) });
         }
 
         constexpr [[nodiscard]] large_integer operator-(const large_integer_data_ref& other_) const {
+            // Enforce signs to be the same
             if (sign != other_.sign) {
                 return *this + large_integer_data_ref(!other_.sign, other_.data.get());
             }
 
+            // Enforce lhs to be larger than rhs
             if (*this < other_) {
                 auto result = other_ - *this;
                 return { !result.sign, std::move(result.data) };
             }
 
+            bool result_sign = sign;
             auto result_data = subtract_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-            bool result_sign = sign;
-
-            return cleanup({ result_sign, result_data });
+            return cleanup({ result_sign, std::move(result_data) });
         }
 
-        // TODO: Use Karatsuba algorithm instead of the naive implementation
-        // TODO: Use Toom-Cook algorithm
-        // TODO: Use Schönhage–Strassen algorithm
         constexpr [[nodiscard]] large_integer operator*(const large_integer_data_ref& other_) const {
+            // Enforce signs to be the same
+            if (sign != other_.sign) {
+                bool result_sign = true;
+                auto result = *this * large_integer_data_ref(!other_.sign, other_.data.get());
+                return { result_sign, std::move(result.data) };
+            }
+
             // Enforce lhs to be larger than rhs
-            if (data.get().size() < other_.data.get().size()) {
+            if (*this < other_) {
                 return other_ * *this;
             }
 
-            bool result_sign = sign != other_.sign;
+            bool result_sign = false;
+            auto result_data = multiply_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-            collection_type result_data(data.get().size() * other_.data.get().size() + 1, 0);
-
-            // Multiply each digit of rhs with each digit of lhs
-            size_t result_index = 0;
-            for (size_t rhs_index = 0; rhs_index < other_.data.get().size(); ++rhs_index) {
-                extended_type overflow{ 0 };
-                result_index = rhs_index;
-                for (const extended_type lhs : data.get()) {
-                    const extended_type rhs = other_.data.get()[rhs_index];
-                    const extended_type old_result = result_data[result_index];
-
-                    extended_type value = lhs * rhs + overflow + old_result;
-                    result_data[result_index] = static_cast<underlying_type>(value);
-
-                    overflow = value >> nb_extended_type_bits;
-
-                    ++result_index;
-                }
-
-                result_data[result_index] = static_cast<underlying_type>(overflow);
-            }
-
-            return cleanup({ result_sign, result_data });
+            return cleanup({ result_sign, std::move(result_data) });
         }
 
         constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer_data_ref& other_) const {
@@ -473,35 +458,6 @@ private:
         }
 
     private:
-        static constexpr [[nodiscard]] large_integer trim_upper_zeros(large_integer&& result_) {
-            size_t index = result_.data.size();
-            while (index > 1 && result_.data[--index] == 0) {
-                result_.data.pop_back();
-            }
-
-            return result_;
-        }
-
-        // Handle the -0 case
-        static constexpr large_integer fix_minus_zeros(large_integer&& result_) {
-            if (result_.data == collection_type{ 0 }) {
-                result_.sign = false;
-            }
-
-            return std::move(result_);
-        }
-
-        static constexpr [[nodiscard]] large_integer cleanup(large_integer&& result_) {
-            result_ = trim_upper_zeros(std::move(result_));
-
-            // Free unused data
-            result_.data.shrink_to_fit();
-
-            result_ = fix_minus_zeros(std::move(result_));
-
-            return result_;
-        }
-
         bool sign{};
         std::reference_wrapper<const collection_type> data;
     };
@@ -530,7 +486,6 @@ private:
         return data;
     }
 
-    // TODO: Move this function back into the operator?
     static constexpr [[nodiscard]] collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
 
@@ -538,10 +493,10 @@ private:
 
         size_t index = 0;
         for (; index < rhs_.size(); ++index) {
-            const extended_type lhs = lhs_[index];
-            const extended_type rhs = rhs_[index];
+            const extended_type lhs_value = lhs_[index];
+            const extended_type rhs_value = rhs_[index];
             const extended_type old_result = result_data[index];
-            const extended_type sum = lhs + rhs + old_result;
+            const extended_type sum = lhs_value + rhs_value + old_result;
 
             // Keep only the lower part that can be stored in underlying_type
             result_data[index] = static_cast<underlying_type>(sum);
@@ -552,9 +507,9 @@ private:
 
         // Expand the overflow
         for (; index < lhs_.size(); ++index) {
-            const extended_type lhs = lhs_[index];
+            const extended_type lhs_value = lhs_[index];
             const extended_type old_result = result_data[index];
-            const extended_type sum = lhs + old_result;
+            const extended_type sum = lhs_value + old_result;
 
             // Keep only the lower part that can be stored in underlying_type
             result_data[index] = static_cast<underlying_type>(sum);
@@ -566,26 +521,26 @@ private:
         return result_data;
     }
 
-    // TODO: Move this function back into the operator?
     static constexpr [[nodiscard]] collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
-        assert(lhs_.size() >= rhs_.size());
+        assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
 
         std::vector<underlying_type> result_data;
         result_data.reserve(lhs_.size());
 
+        // Subtract every digit of rhs from the corresponding lhs
         bool carry = false;
         const size_t min_size = rhs_.size();
         size_t index = 0;
         for (; index < min_size; ++index) {
-            const signed_extended_type lhs = lhs_[index];
-            const signed_extended_type rhs = rhs_[index];
+            const signed_extended_type lhs_value = lhs_[index];
+            const signed_extended_type rhs_value = rhs_[index];
 
-            signed_extended_type value = lhs;
+            signed_extended_type value = lhs_value;
             if (carry) {
                 --value;
             }
 
-            if (value < rhs) {
+            if (value < rhs_value) {
                 value += base;
                 carry = true;
             }
@@ -593,11 +548,12 @@ private:
                 carry = false;
             }
 
-            extended_type diff = value - rhs;
+            extended_type diff = value - rhs_value;
             assert(diff <= std::numeric_limits<underlying_type>::max());
             result_data.emplace_back(static_cast<underlying_type>(diff));
         }
 
+        // Extend the carry to the rest of lhs
         for (; index < lhs_.size(); ++index) {
             const signed_extended_type lhs = lhs_[index];
             signed_extended_type value = lhs;
@@ -620,7 +576,37 @@ private:
         return result_data;
     }
 
-    // TODO: Move this function back into the operator?
+    // TODO: Use Karatsuba algorithm instead of the naive implementation
+    // TODO: Use Toom-Cook algorithm
+    // TODO: Use Schönhage–Strassen algorithm
+    static constexpr [[nodiscard]] collection_type multiply_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
+        assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
+
+        collection_type result_data(lhs_.size() * rhs_.size() + 1, 0);
+
+        // Multiply each digit of rhs with each digit of lhs
+        size_t result_index = 0;
+        for (size_t rhs_index = 0; rhs_index < rhs_.size(); ++rhs_index) {
+            extended_type overflow{ 0 };
+            result_index = rhs_index;
+            for (const extended_type lhs_value : lhs_) {
+                const extended_type rhs_value = rhs_[rhs_index];
+                const extended_type old_result = result_data[result_index];
+
+                extended_type value = lhs_value * rhs_value + overflow + old_result;
+                result_data[result_index] = static_cast<underlying_type>(value);
+
+                overflow = value >> nb_extended_type_bits;
+
+                ++result_index;
+            }
+
+            result_data[result_index] = static_cast<underlying_type>(overflow);
+        }
+
+        return result_data;
+    }
+
     static constexpr [[nodiscard]] std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_)
     {
         if (lhs_.size() != rhs_.size()) {
@@ -641,6 +627,35 @@ private:
 #endif
 
         return std::strong_ordering::equal;
+    }
+
+    static constexpr [[nodiscard]] large_integer trim_upper_zeros(large_integer&& result_) {
+        size_t index = result_.data.size();
+        while (index > 1 && result_.data[--index] == 0) {
+            result_.data.pop_back();
+        }
+
+        return result_;
+    }
+
+    // Handle the -0 case
+    static constexpr large_integer fix_minus_zeros(large_integer&& result_) {
+        if (result_.data == collection_type{ 0 }) {
+            result_.sign = false;
+        }
+
+        return std::move(result_);
+    }
+
+    static constexpr [[nodiscard]] large_integer cleanup(large_integer&& result_) {
+        result_ = trim_upper_zeros(std::move(result_));
+
+        // Free unused data
+        result_.data.shrink_to_fit();
+
+        result_ = fix_minus_zeros(std::move(result_));
+
+        return result_;
     }
 
     bool sign{};
