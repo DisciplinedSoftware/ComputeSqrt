@@ -69,6 +69,9 @@ constexpr auto compute_square_root_exception(T value_, std::invocable<T> auto fu
 // fractional part is (-2, -0.25], [0.25, 2)
 // return [fractional, exponent]
 template<typename T>
+#if __cpp_lib_constexpr_cmath >= 202202L
+constexpr
+#endif
 std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
 {
     int exponent{};
@@ -98,6 +101,9 @@ std::pair<T, int> split_into_fractional_and_even_exponent(T value_)
 // To make this optimization works the exponent must be even
 // This is less optimal when the value is a perfect square
 template<std::floating_point T>
+#if __cpp_lib_constexpr_cmath >= 202202L
+constexpr
+#endif
 auto compute_square_root_using_fractional_and_exponent_optimization(T value_, std::invocable<T> auto func_) -> T {
     // Split the problem into the fractional and the exponent parts
     const auto [fractional, exponent] = details::split_into_fractional_and_even_exponent(value_);
@@ -322,16 +328,14 @@ TEST_CASE("compute_square_root_bakhshali_method") {
     CHECK_THAT(compute_square_root_bakhshali_method(2.2e-300), Catch::Matchers::WithinAbs(std::sqrt(2.2e-300), std::numeric_limits<double>::epsilon()));
 }
 
-
-
-// TODO: Implement a version that stream the digits
-
-// TODO: Modify implementations to avoid data copies when signs are different
-// This can also be achieved by moving operations to functions that only takes the data
-
+// ----------------------------------------------------------------------------
+// Forward declaration
 class large_integer;
 constexpr large_integer from_string(const std::string& str_);
 
+
+// ----------------------------------------------------------------------------
+// Large integer to allow infinitely large integer number
 class large_integer {
 public:
     using underlying_type = std::uint32_t;
@@ -404,12 +408,7 @@ private:
 
             bool result_sign = sign;
 
-            // Handle the -0 case
-            if (result_data == collection_type{ 0 }) {
-                result_sign = false;
-            }
-
-            return { result_sign, result_data };
+            return cleanup({ result_sign, result_data });
         }
 
         constexpr [[nodiscard]] large_integer operator-(const large_integer_data_ref& other_) const {
@@ -426,14 +425,12 @@ private:
 
             bool result_sign = sign;
 
-            // Handle the -0 case
-            if (result_data == collection_type{ 0 }) {
-                result_sign = false;
-            }
-
-            return { result_sign, result_data };
+            return cleanup({ result_sign, result_data });
         }
 
+        // TODO: Use Karatsuba algorithm instead of the naive implementation
+        // TODO: Use Toom-Cook algorithm
+        // TODO: Use Schönhage–Strassen algorithm
         constexpr [[nodiscard]] large_integer operator*(const large_integer_data_ref& other_) const {
             // Enforce lhs to be larger than rhs
             if (data.get().size() < other_.data.get().size()) {
@@ -444,6 +441,7 @@ private:
 
             collection_type result_data(data.get().size() * other_.data.get().size() + 1, 0);
 
+            // Multiply each digit of rhs with each digit of lhs
             size_t result_index = 0;
             for (size_t rhs_index = 0; rhs_index < other_.data.get().size(); ++rhs_index) {
                 extended_type overflow{ 0 };
@@ -463,20 +461,7 @@ private:
                 result_data[result_index] = static_cast<underlying_type>(overflow);
             }
 
-            // Trim upper zeros
-            size_t index = result_data.size();
-            while (index > 1 && result_data[--index] == 0) {
-                result_data.pop_back();
-            }
-
-            result_data.shrink_to_fit();
-
-            // Handle the -0 case
-            if (result_data == collection_type{ 0 }) {
-                result_sign = false;
-            }
-
-            return { result_sign, result_data };
+            return cleanup({ result_sign, result_data });
         }
 
         constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer_data_ref& other_) const {
@@ -488,6 +473,35 @@ private:
         }
 
     private:
+        static constexpr [[nodiscard]] large_integer trim_upper_zeros(large_integer&& result_) {
+            size_t index = result_.data.size();
+            while (index > 1 && result_.data[--index] == 0) {
+                result_.data.pop_back();
+            }
+
+            return result_;
+        }
+
+        // Handle the -0 case
+        static constexpr large_integer fix_minus_zeros(large_integer&& result_) {
+            if (result_.data == collection_type{ 0 }) {
+                result_.sign = false;
+            }
+
+            return std::move(result_);
+        }
+
+        static constexpr [[nodiscard]] large_integer cleanup(large_integer&& result_) {
+            result_ = trim_upper_zeros(std::move(result_));
+
+            // Free unused data
+            result_.data.shrink_to_fit();
+
+            result_ = fix_minus_zeros(std::move(result_));
+
+            return result_;
+        }
+
         bool sign{};
         std::reference_wrapper<const collection_type> data;
     };
@@ -549,16 +563,6 @@ private:
             result_data[index + 1] = sum >> nb_extended_type_bits;
         }
 
-        // TODO: Remove trimming duplication
-
-        // Trim upper zeros
-        index = result_data.size();
-        while (index > 1 && result_data[--index] == 0) {
-            result_data.pop_back();
-        }
-
-        result_data.shrink_to_fit();
-
         return result_data;
     }
 
@@ -612,14 +616,6 @@ private:
             assert(value <= std::numeric_limits<underlying_type>::max());
             result_data.emplace_back(static_cast<underlying_type>(value));
         }
-
-        // Trim upper zeros
-        index = result_data.size();
-        while (index > 1 && result_data[--index] == 0) {
-            result_data.pop_back();
-        }
-
-        result_data.shrink_to_fit();
 
         return result_data;
     }
@@ -1169,6 +1165,7 @@ int main(int argc, const char* argv[])
 
     // TODO: Using recursion instead of loop (possibly using continued fraction expansion implementation)
 
+    // TODO: Implement a digit by digit version that stream the digits
     // TODO: Using an async task
     // TODO: Using a coroutine that return an infinite number of digits
     // TODO: Using a coroutine that use thread (or an executor)
