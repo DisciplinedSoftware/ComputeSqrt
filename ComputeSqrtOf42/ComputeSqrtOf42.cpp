@@ -1,8 +1,11 @@
 ﻿// Output the square root of 42 in different ways
 
+#include <algorithm>
+#include <cassert>
 #include <charconv>
 #include <cmath>
 #include <concepts>
+#include <cstdint>
 #include <format>
 #include <iostream>
 #include <iomanip>
@@ -11,6 +14,7 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <vector>
 
 // TODO: Replace catch2 with a custom test framework
 #include <catch2/catch_test_macros.hpp>
@@ -354,27 +358,27 @@ public:
     constexpr large_integer(const char* str_) : large_integer(from_string(str_)) {}
     constexpr large_integer(const std::string& str_) : large_integer(from_string(str_)) {}
 
-    constexpr [[nodiscard]] large_integer operator-() const {
+    [[nodiscard]] constexpr large_integer operator-() const {
         return { !sign, data };
     }
 
-    constexpr [[nodiscard]] large_integer operator+(const large_integer& other_) const {
+    [[nodiscard]] constexpr large_integer operator+(const large_integer& other_) const {
         return large_integer_data_ref(*this) + large_integer_data_ref(other_);
     }
 
-    constexpr [[nodiscard]] large_integer operator-(const large_integer& other_) const {
+    [[nodiscard]] constexpr large_integer operator-(const large_integer& other_) const {
         return large_integer_data_ref(*this) - large_integer_data_ref(other_);
     }
 
-    constexpr [[nodiscard]] large_integer operator*(const large_integer& other_) const {
+    [[nodiscard]] constexpr large_integer operator*(const large_integer& other_) const {
         return large_integer_data_ref(*this) * large_integer_data_ref(other_);
     }
 
-    constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer& other_) const {
+    [[nodiscard]] constexpr std::strong_ordering operator<=>(const large_integer& other_) const {
         return large_integer_data_ref(*this) <=> large_integer_data_ref(other_);
     }
 
-    constexpr [[nodiscard]] std::strong_ordering operator<=>(std::integral auto rhs_) const {
+    [[nodiscard]] constexpr std::strong_ordering operator<=>(std::integral auto rhs_) const {
         return *this <=> large_integer(rhs_);
     }
 
@@ -395,7 +399,7 @@ private:
         constexpr large_integer_data_ref(const large_integer& other_) : large_integer_data_ref(other_.sign, std::cref(other_.data)) {}
         constexpr large_integer_data_ref(bool sign_, const std::vector<underlying_type>& data_) : sign(sign_), data(std::cref(data_)) {}
 
-        constexpr [[nodiscard]] large_integer operator+(const large_integer_data_ref& other_) const {
+        [[nodiscard]] constexpr large_integer operator+(const large_integer_data_ref& other_) const {
             // Enforce signs to be the same
             if (sign != other_.sign) {
                 return *this - large_integer_data_ref(!other_.sign, other_.data.get());
@@ -412,7 +416,7 @@ private:
             return cleanup({ result_sign, std::move(result_data) });
         }
 
-        constexpr [[nodiscard]] large_integer operator-(const large_integer_data_ref& other_) const {
+        [[nodiscard]] constexpr large_integer operator-(const large_integer_data_ref& other_) const {
             // Enforce signs to be the same
             if (sign != other_.sign) {
                 return *this + large_integer_data_ref(!other_.sign, other_.data.get());
@@ -430,7 +434,7 @@ private:
             return cleanup({ result_sign, std::move(result_data) });
         }
 
-        constexpr [[nodiscard]] large_integer operator*(const large_integer_data_ref& other_) const {
+        [[nodiscard]] constexpr large_integer operator*(const large_integer_data_ref& other_) const {
             // Enforce signs to be the same
             if (sign != other_.sign) {
                 bool result_sign = true;
@@ -449,7 +453,7 @@ private:
             return cleanup({ result_sign, std::move(result_data) });
         }
 
-        constexpr [[nodiscard]] std::strong_ordering operator<=>(const large_integer_data_ref& other_) const {
+        [[nodiscard]] constexpr std::strong_ordering operator<=>(const large_integer_data_ref& other_) const {
             if (sign != other_.sign) {
                 return sign ? std::strong_ordering::greater : std::strong_ordering::less;
             }
@@ -464,7 +468,7 @@ private:
 
     constexpr large_integer(bool sign_, std::vector<underlying_type> data_) : sign(sign_), data(std::move(data_)) {}
 
-    static constexpr [[nodiscard]] collection_type to_data_collection(std::integral auto value_)
+    [[nodiscard]] static constexpr collection_type to_data_collection(std::integral auto value_)
     {
         std::vector<underlying_type> data;
         if constexpr (std::signed_integral<decltype(value_)>) {
@@ -486,7 +490,7 @@ private:
         return data;
     }
 
-    static constexpr [[nodiscard]] collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
+    [[nodiscard]] static constexpr collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
 
         std::vector<underlying_type> result_data(lhs_.size() + 1, 0);
@@ -521,7 +525,7 @@ private:
         return result_data;
     }
 
-    static constexpr [[nodiscard]] collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
+    [[nodiscard]] static constexpr collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
 
         std::vector<underlying_type> result_data;
@@ -579,7 +583,7 @@ private:
     // TODO: Use Karatsuba algorithm instead of the naive implementation
     // TODO: Use Toom-Cook algorithm
     // TODO: Use Schönhage–Strassen algorithm
-    static constexpr [[nodiscard]] collection_type multiply_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
+    [[nodiscard]] static constexpr collection_type multiply_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::equal || compare_large_unsigned_integer(lhs_, rhs_) == std::strong_ordering::greater);
 
         collection_type result_data(lhs_.size() * rhs_.size() + 1, 0);
@@ -607,14 +611,14 @@ private:
         return result_data;
     }
 
-    static constexpr [[nodiscard]] std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_)
+    [[nodiscard]] static constexpr std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_)
     {
         if (lhs_.size() != rhs_.size()) {
             return (lhs_.size() < rhs_.size()) ? std::strong_ordering::less : std::strong_ordering::greater;
         }
 
 #if __cpp_lib_ranges_zip >= 202110L
-        for (const auto& [lhs, rhs] : std::views::reverse(std::views::zip(lhs_, rhs_))) {
+        for (const auto& [lhs, rhs] : std::views::zip(lhs_, rhs_) | std::views::reverse) {
             if (lhs != rhs) {
                 return (lhs < rhs) ? std::strong_ordering::less : std::strong_ordering::greater;
             }
@@ -629,7 +633,7 @@ private:
         return std::strong_ordering::equal;
     }
 
-    static constexpr [[nodiscard]] large_integer trim_upper_zeros(large_integer&& result_) {
+    [[nodiscard]] static constexpr large_integer trim_upper_zeros(large_integer&& result_) {
         size_t index = result_.data.size();
         while (index > 1 && result_.data[--index] == 0) {
             result_.data.pop_back();
@@ -647,7 +651,7 @@ private:
         return std::move(result_);
     }
 
-    static constexpr [[nodiscard]] large_integer cleanup(large_integer&& result_) {
+    [[nodiscard]] static constexpr large_integer cleanup(large_integer&& result_) {
         result_ = trim_upper_zeros(std::move(result_));
 
         // Free unused data
@@ -705,7 +709,7 @@ bool operator==(std::integral auto lhs_, const large_integer& rhs_) {
 namespace details {
 
 // A function to perform division of large numbers
-constexpr [[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number, large_integer::extended_type divisor) {
+[[nodiscard]] constexpr std::string divide_integer_as_string_by_integer(const std::string& number, large_integer::extended_type divisor) {
     // As result can be very large store it in string
     std::string ans;
 
@@ -733,7 +737,7 @@ constexpr [[nodiscard]] std::string divide_integer_as_string_by_integer(const st
     return ans;
 }
 
-constexpr [[nodiscard]] large_integer::extended_type modulo_integer_as_string_by_integer(const std::string& num, large_integer::extended_type a)
+[[nodiscard]] constexpr large_integer::extended_type modulo_integer_as_string_by_integer(const std::string& num, large_integer::extended_type a)
 {
     // Initialize result
     large_integer::extended_type res = 0;
@@ -747,7 +751,7 @@ constexpr [[nodiscard]] large_integer::extended_type modulo_integer_as_string_by
 
 }
 
-constexpr [[nodiscard]] large_integer from_string(const std::string& str_) {
+[[nodiscard]] constexpr large_integer from_string(const std::string& str_) {
     if (str_.empty()) {
         // TODO: This should probably throw
         return {};
@@ -788,7 +792,7 @@ std::istream& operator>>(std::istream& stream_, large_integer& value_) {
 namespace details {
 
 // Function to add two strings representing large integers
-constexpr [[nodiscard]] std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
+[[nodiscard]] constexpr std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
     assert(!lhs_.empty() && !rhs_.empty());
 
     if (lhs_.empty() && rhs_.empty()) {
@@ -830,7 +834,7 @@ constexpr [[nodiscard]] std::string add_integers_as_string(const std::string& lh
 }
 
 // Function to multiply a string representing a large integer by an integer
-constexpr [[nodiscard]] std::string multiply_integer_as_string_by_integer(const std::string& num_, large_integer::extended_type factor_) {
+[[nodiscard]] constexpr std::string multiply_integer_as_string_by_integer(const std::string& num_, large_integer::extended_type factor_) {
     std::string result;
     large_integer::extended_type carry = 0;
     for (auto digit_str : std::views::reverse(num_)) {
@@ -848,7 +852,7 @@ constexpr [[nodiscard]] std::string multiply_integer_as_string_by_integer(const 
 }
 
 // Function to concatenate the vector elements into a single large integer represented as a string
-constexpr [[nodiscard]] std::string concatenate_integers_to_string(const std::vector<large_integer::underlying_type>& data_) {
+[[nodiscard]] constexpr std::string concatenate_integers_to_string(const std::vector<large_integer::underlying_type>& data_) {
     std::string result = "0";
     for (size_t i = 0; i < data_.size(); ++i) {
         // Multiply the current element by the large_integer base
@@ -864,7 +868,7 @@ constexpr [[nodiscard]] std::string concatenate_integers_to_string(const std::ve
 
 }
 
-constexpr [[nodiscard]] std::string to_string(const large_integer& value_) {
+[[nodiscard]] constexpr std::string to_string(const large_integer& value_) {
     auto result = details::concatenate_integers_to_string(value_.data);
 
     if (value_.sign) {
