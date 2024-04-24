@@ -1151,12 +1151,24 @@ int main(int argc, const char* argv[])
     // TODO: Use std::reduce instead of loops if possible with the help of a structure (overflow, data)
     // TODO: Multi-thread large_integer operations and enable it using CRTP or an executor
 
-    // TODO: Implement different initial estimate methods
-    // TODO: Using quake3 approximation method (not portable)
-    // TODO: Using Babylonian approximation method
-    // TODO: Using Log base 2 approximation and Newton's method (undefined behavior as union is use to write to one type and read the other)
+    // TODO: Implement different initial estimate methods (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Approximations_that_depend_on_the_floating_point_representation)
+
+    // TODO: Using exponential identity {\displaystyle sqrt(S) = e^(0.5*ln(S) (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Exponential_identity)
+    // TODO: Using two-variable iterative method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#A_two-variable_iterative_method)
+    // TODO: Using iterative methods for reciprocal square roots (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Iterative_methods_for_reciprocal_square_roots)
+    // TODO: Using Goldschmidt’s algorithm (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Goldschmidt%E2%80%99s_algorithm)
+    // TODO: Using Taylor series (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Taylor_series)
+    // TODO: Using continued fraction expansion (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Continued_fraction_expansion)
+
+    // TODO: Using quake3 approximation method (not fully portable as double representation specific) (https://www.lomont.org/papers/2003/InvSqrt.pdf)
+    // TODO: Using Log base 2 approximation and Newton's method (undefined behavior as union is use to write to one type and read the other) (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Approximations_that_depend_on_the_floating_point_representation)
+    // TODO: Using Babylonian approximation method (previous + 2 iterations -> 0.25f*u.x + x/u.x;) (undefined behavior as union is use to write to one type and read the other)
     // TODO: Using Bakhshali approximation (only one iteration)
-    // TODO: Using recursion
+    // TODO: Using Newton method approximation (not fully portable as double representation specific) (http://www.azillionmonkeys.com/qed/sqroot.html#calcmeth)
+    // TODO: Using float biased approximation (not fully portable as float representation specific) (http://bits.stephan-brumme.com/squareRoot.html)
+
+    // TODO: Using recursion instead of loop (possibly using continued fraction expansion implementation)
+
     // TODO: Using an async task
     // TODO: Using a coroutine that return an infinite number of digits
     // TODO: Using a coroutine that use thread (or an executor)
