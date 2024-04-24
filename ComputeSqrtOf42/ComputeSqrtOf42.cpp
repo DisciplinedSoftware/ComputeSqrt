@@ -998,7 +998,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     std::string result_string(std::begin(integral_string_rng), std::end(integral_string_rng));
 
     // Early return optimization when the number is a perfect square
-    if (remainder == 0) {
+    if (remainder == large_integer(0)) {
         return result_string;
     }
 
@@ -1018,7 +1018,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     while (precision > 0) {
         result_string += static_cast<std::string::value_type>(compute_next_digit(next_value)) + '0';
 
-        if (remainder == 0) {
+        if (remainder == large_integer(0)) {
             break;
         }
 
