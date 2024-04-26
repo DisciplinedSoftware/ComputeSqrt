@@ -15,8 +15,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Add your source files
 set(SOURCES 
-    src/ComputeSqrtOf42.cpp
-    # Add more source files as needed
+    src/main.cpp
+    src/large_integer.h
+    src/large_integer.cpp
 )
 
 # Create an executable from the source files
