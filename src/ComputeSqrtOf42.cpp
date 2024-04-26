@@ -606,9 +606,6 @@ private:
         return result_data;
     }
 
-    // TODO: Use Karatsuba algorithm instead of the naive implementation
-    // TODO: Use Toom-Cook algorithm
-    // TODO: Use Schönhage–Strassen algorithm
     [[nodiscard]] static constexpr collection_type multiply_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(sorted(lhs_, rhs_));
 
@@ -773,8 +770,9 @@ namespace details {
     large_integer::extended_type res = 0;
 
     // One by one process all digits of 'number_'
-    for (const auto digit : number_)
+    for (const auto digit : number_) {
         res = (res * 10 + (digit - '0')) % divisor_;
+    }
 
     return res;
 }
@@ -782,17 +780,38 @@ namespace details {
 } // namespace details
 
 [[nodiscard]] constexpr std::optional<large_integer> large_integer::from_string(const std::string& str_) {
-    if (str_.empty()) {
+    const bool is_string_empty = str_.empty();
+    assert(!is_string_empty);
+    if (is_string_empty) {
         return {};
     }
 
     bool sign = false;
     auto begin = std::begin(str_);
-    if (str_[0] == '-') {
+    if (*begin == '-') {
         sign = true;
         ++begin;
-        // TODO: Add error management
-        // this will throw if the number is ill-formed with "-"
+    }
+
+    const bool is_number_well_formed = std::all_of(begin, std::end(str_), [](auto digit) {
+        if (std::isdigit(digit)) {
+            return true;
+        }
+
+        // This assume a locale that split number using '.'
+        if (digit == '.') {
+            static unsigned int dot_counter = 0;
+            ++dot_counter;
+            assert(dot_counter == 1);
+            return true;
+        }
+
+        return false;
+    });
+
+    assert(is_number_well_formed);
+    if (!is_number_well_formed) {
+        return {};
     }
 
     std::string number(begin, std::end(str_));
@@ -961,10 +980,6 @@ TEST_CASE("large_integer") {
         == large_integer::from_string("298834599515633016932061982193820879971023073566401265337659334601918570016121259675495672962635998235361049510462426228172475237372762768444440895904287007630187680186411915435282065948674657476050796884633616843117720529658723480449313975").value());
 }
 
-// TODO: Generalize compute_square_root_digit_by_digit_method to handle both
-// integers and floating point values This new version should return a
-// large_floating_point instead of a string
-
 // ----------------------------------------------------------------------------
 // This method has been simplified and only supports computing the square root of integer value
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
@@ -994,9 +1009,6 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
 
     large_integer remainder{ 0 };
     large_integer result{ 0 };
-
-    // TODO: move this lambda to a function and return a structure that includes
-    // the digit, the remainder and the result
 
     auto compute_next_digit = [&remainder, &result](auto current_) {
         // find x * (20p + x) <= remainder*100+current
@@ -1081,7 +1093,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
             : result_string
             | std::views::reverse
             | std::views::drop(1)
-            | std::views::filter([](auto c) { return c != '.'; })) {
+            | std::views::filter([](auto c) { return c != '.'; })) { // This assume a locale that split number using '.'
             if (digit == '9') {
                 digit = '0';
             }
@@ -1094,17 +1106,23 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
 
         if (carry) {
             result_string.insert(std::begin(result_string), '1');
-            const auto it = std::find(std::begin(result_string), std::end(result_string), '.');
-            if (it != std::end(result_string)) {
-                result_string.pop_back();
+            // This assume a locale that split number using '.'
+#if __cpp_lib_string_contains >= 202011L
+            if (result_string.contains('.')) {
+#else
+            if (result_string.find('.') != std::string::npos) {
+#endif
+                    result_string.pop_back();
+                }
             }
         }
-    }
-    else {
-        result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
-    }
+        else
+        {
+            result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
+        }
 
-    // trim 0s to the left
+        // trim 0s to the left
+        // This assume a locale that split number using '.'
 #if __cpp_lib_string_contains >= 202011L
     if (result_string.contains('.')) {
 #else
@@ -1153,6 +1171,21 @@ template <double Value> struct constexpr_type {
 template <double Value>
 constexpr auto constexpr_type_v = constexpr_type<Value>::value;
 
+// This is a non protable version, but probably the fastest one
+#ifdef __GNUC__
+inline double sqrt_asm(double value_)
+{
+    double result;
+    asm("fldl %[n];"           // Load the operand n onto the FPU stack
+        "fsqrt;"               // Perform square root operation on the top of the FPU stack
+        "fstpl %[res];"        // Store the result from the FPU stack into the variable result
+        : [res] "=m"(result)   // Output constraint for the result variable
+        : [n] "m"(value_)      // Input constraint for the input variable n
+    );
+    return result;
+}
+#endif
+
 int main(int argc, const char* argv[]) {
     const int result = Catch::Session().run(argc, argv);
 
@@ -1160,12 +1193,12 @@ int main(int argc, const char* argv[]) {
     std::cout << std::setprecision(std::numeric_limits<long double>::max_digits10);
 
     unsigned int counter = 0;
-    std::cout << ++counter << ". Using defined constant: " << SQRT42 << '\n';
+    std::cout << ++counter << ". Using a defined constant: " << SQRT42 << '\n';
 
-    std::cout << ++counter << ". Using stream operator with a constexpr constant as an integer: " << sqrt42<int> << '\n';
-    std::cout << ++counter << ". Using stream operator with a constexpr constant as a float: " << sqrt42<float> << '\n';
-    std::cout << ++counter << ". Using stream operator with a constexpr constant as a double: " << sqrt42<double> << '\n';
-    std::cout << ++counter << ". Using stream operator with a constexpr constant as a long double: " << sqrt42<long double> << '\n';
+    std::cout << ++counter << ". Using cout stream operator with a constexpr constant as an integer: " << sqrt42<int> << '\n';
+    std::cout << ++counter << ". Using cout stream operator with a constexpr constant as a float: " << sqrt42<float> << '\n';
+    std::cout << ++counter << ". Using cout stream operator with a constexpr constant as a double: " << sqrt42<double> << '\n';
+    std::cout << ++counter << ". Using cout stream operator with a constexpr constant as a long double: " << sqrt42<long double> << '\n';
 
     print_using_std_printf("%d. Using std::printf with fix-point notation and float: %.9f\n", ++counter, sqrt42<float>); // This is useless as f consider the argument as a double
     print_using_std_printf("%d. Using std::printf with fix-point notation and double: %.17lf\n", ++counter, sqrt42<double>);
@@ -1199,6 +1232,10 @@ int main(int argc, const char* argv[]) {
 
     std::cout << ++counter << ". Using std::pow: " << std::pow(42.0l, 0.5l) << '\n';
 
+#ifdef __GNUC__
+    std::cout << ++counter << ". Using assembly fsqrt: " << sqrt_asm(42.0) << '\n';
+#endif
+
     // Pass the value to a template expression to ensure constant expression
     std::cout << ++counter << ". Using custom function using constexpr Heron's method: " <<
 #if __cpp_nontype_template_args >= 201911L
@@ -1212,67 +1249,6 @@ int main(int argc, const char* argv[]) {
     std::cout << ++counter << ". Using custom function using Heron's method: " << compute_square_root_heron_method(42) << '\n';
     std::cout << ++counter << ". Using custom function using Bakhshali's method: " << compute_square_root_bakhshali_method(42) << '\n';
     std::cout << ++counter << ". Using infinite digits (only show 1k): " << compute_square_root_digit_by_digit_method(42, 1'000) << '\n';
-
-    // TODO: Add computation time around each computing method
-
-    // TODO: Use std::reduce instead of loops if possible with the help of a
-    // structure (overflow, data)
-    // TODO: Multi-thread large_integer operations and enable it using CRTP or an
-    // executor
-
-    // TODO: Implement different initial estimate methods
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Approximations_that_depend_on_the_floating_point_representation)
-
-    // TODO: Using exponential identity {\displaystyle sqrt(S) = e^(0.5*ln(S)
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Exponential_identity)
-    // TODO: Using two-variable iterative method
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#A_two-variable_iterative_method)
-    // TODO: Using iterative methods for reciprocal square roots
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Iterative_methods_for_reciprocal_square_roots)
-    // TODO: Using Goldschmidt’s algorithm
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Goldschmidt%E2%80%99s_algorithm)
-    // TODO: Using Taylor series
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Taylor_series)
-    // TODO: Using continued fraction expansion
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Continued_fraction_expansion)
-
-    // TODO: Using quake3 approximation method (not fully portable as double
-    // representation specific) (https://www.lomont.org/papers/2003/InvSqrt.pdf)
-    // TODO: Using Log base 2 approximation and Newton's method (undefined
-    // behavior as union is use to write to one type and read the other)
-    // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Approximations_that_depend_on_the_floating_point_representation)
-    // TODO: Using Babylonian approximation method (previous + 2 iterations ->
-    // 0.25f*u.x + x/u.x;) (undefined behavior as union is use to write to one
-    // type and read the other)
-    // TODO: Using Bakhshali approximation (only one iteration)
-    // TODO: Using Newton method approximation (not fully portable as double
-    // representation specific)
-    // (http://www.azillionmonkeys.com/qed/sqroot.html#calcmeth)
-    // TODO: Using float biased approximation (not fully portable as float
-    // representation specific) (http://bits.stephan-brumme.com/squareRoot.html)
-
-    // TODO: Using recursion instead of loop (possibly using continued fraction
-    // expansion implementation)
-
-    // TODO: Implement a digit by digit version that stream the digits
-    // TODO: Using an async task
-    // TODO: Using a coroutine that return an infinite number of digits
-    // TODO: Using a coroutine that use thread (or an executor)
-    // TODO: Using a math library? -> not possible on most website
-    // TODO: Using a different locale -> maybe not as it's gonna be a ',' instead
-    // of a '.' (a little bit boring)
-    // TODO: Using constexpr method
-    // TODO: Using template parameters, to be computed at compile time
-    // TODO: As a reduced expression of prime factor sqrt(2)*sqrt(3)*sqrt(7)
-
-    // I didn't use the following method, even if it's probably the fastest way to
-    // compute the square root of a value, as it's not portable
-    // double inline __declspec (naked) __fastcall sqrt_asm(double n)
-    //{
-    //    _asm fld qword ptr[esp + 4]
-    //    _asm fsqrt
-    //    _asm ret 8
-    //}
 
     return result;
 }
