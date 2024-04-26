@@ -1183,7 +1183,11 @@ compute_square_root_digit_by_digit_method(std::integral auto value_,
     }
 
     // trim 0s to the left
+#if __cpp_lib_string_contains >= 202011L
     if (result_string.contains('.')) {
+#else
+    if (result_string.find('.') != std::string::npos) {
+#endif
         auto index = result_string.length() - 1;
         while (index > 0) {
             if (result_string[index] == '0') {
@@ -1201,7 +1205,7 @@ compute_square_root_digit_by_digit_method(std::integral auto value_,
     }
 
     return result_string;
-}
+    }
 
 TEST_CASE("compute_square_root_digit_by_digit_method") {
     using namespace std::string_literals;
