@@ -1,5 +1,5 @@
 # ComputeSqrtOf42
 
-./setup.sh
+./generate.sh
 cmake --build build
 ./build/ComputeSqrtOf42
