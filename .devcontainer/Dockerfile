@@ -13,12 +13,6 @@ RUN if [ "${REINSTALL_CMAKE_VERSION_FROM_SOURCE}" != "none" ]; then \
 # [Optional] Uncomment this section to install additional vcpkg ports.
 RUN su vscode -c "${VCPKG_ROOT}/vcpkg install catch2"
 
-# Set the path to the directory where Catch2 is installed
-set(CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
-
-# Find Catch2
-find_package(Catch2 REQUIRED)
-
 # [Optional] Uncomment this section to install additional packages.
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends software-properties-common \
