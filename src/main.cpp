@@ -350,7 +350,9 @@ std::vector<unsigned int> split_integer_into_groups_of_2_digits(std::integral au
 
 class square_root_digits_generator {
 public:
-    unsigned int operator()(auto current_) {
+    constexpr square_root_digits_generator() = default;
+
+    [[nodiscard]] constexpr unsigned int operator()(auto current_) {
         // find x * (20p + x) <= remainder*100+current
         const large_integer current_remainder = remainder * 100 + current_;
         unsigned int x{ 0 };
@@ -377,19 +379,19 @@ public:
         return x;
     };
 
-    bool has_next_digit() const { return remainder != large_integer(0); }
+    [[nodiscard]] constexpr bool has_next_digit() const { return remainder != large_integer(0); }
 
 private:
     large_integer remainder{ 0 };
     large_integer result{ 0 };
 };
 
-std::string compute_integral_part_of_square_root(std::integral auto value_, square_root_digits_generator& generator_) {
+[[nodiscard]] constexpr std::string compute_integral_part_of_square_root(std::integral auto value_, square_root_digits_generator& generator_) {
     const auto integer_values = split_integer_into_groups_of_2_digits(value_);
 
     auto integral_string_rng
         = std::views::reverse(integer_values)
-        | std::views::transform(std::ref(generator))
+        | std::views::transform(std::ref(generator_))
         | std::views::transform([](auto x) {
         assert(x < 10);
         return static_cast<std::string::value_type>(x) + '0';
@@ -398,7 +400,7 @@ std::string compute_integral_part_of_square_root(std::integral auto value_, squa
     return { std::begin(integral_string_rng), std::end(integral_string_rng) };
 }
 
-std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+[[nodiscard]] constexpr std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     assert(value_ != NAN && value_ >= 0);
 
     // Early return optimization
@@ -408,30 +410,27 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
 
     square_root_digits_generator generator;
 
-    auto result_string = compute_integral_part_of_square_root(value_, generator);
+    auto integral_part = compute_integral_part_of_square_root(value_, generator);
 
     // Early return optimization when the number is a perfect square
     if (!generator.has_next_digit()) {
-        return result_string;
+        return integral_part;
     }
 
     // Adjust precision according to the number of integral digits
-    auto precision = max_precision_ > result_string.length()
-        ? max_precision_ - result_string.length()
+    auto precision = max_precision_ > integral_part.length()
+        ? max_precision_ - integral_part.length()
         : 0;
 
-    // Adjust capacity of result_string
-    result_string.reserve(result_string.length() + precision + 1);
-
-    if (precision > 0) {
-        result_string += ".";
-    }
+    // Adjust capacity of fractional part
+    std::string fractional_part;
+    fractional_part.reserve(precision);
 
     // Compute the fractional part
     constexpr unsigned int next_value = 0;
 
     while (precision > 0) {
-        result_string +=
+        fractional_part +=
             static_cast<std::string::value_type>(generator(next_value)) + '0';
 
         if (!generator.has_next_digit()) {
@@ -444,17 +443,23 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     // Round the last digit
     const auto rounding_digit = generator(next_value);
 
-    const double last_digit = result_string.back() - '0';
-    const double rounded_last_digit = std::round(last_digit + (static_cast<double>(rounding_digit) / 10.0));
+    const double rounded_last_digit = std::round((static_cast<double>(rounding_digit) / 10.0));
 
-    if (rounded_last_digit >= 10) {
-        result_string.back() = '0';
-        bool carry = true;
-        for (auto& digit
-            : result_string
-            | std::views::reverse
-            | std::views::drop(1)
-            | std::views::filter([](auto c) { return c != '.'; })) { // This assume a locale that split number using '.'
+    bool carry = rounded_last_digit >= 1;
+    for (auto& digit : fractional_part | std::views::reverse) {
+        if (!carry) {
+            break;
+        }
+        if (digit == '9') {
+            digit = '0';
+        } else {
+            digit += 1;
+            carry = false;
+        }
+    }
+
+    if (carry) {
+        for (auto& digit : integral_part) {
             if (digit == '9') {
                 digit = '0';
             } else {
@@ -463,45 +468,21 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
                 break;
             }
         }
+    }
 
-        if (carry) {
-            result_string.insert(std::begin(result_string), '1');
-            // This assume a locale that split number using '.'
-#if __cpp_lib_string_contains >= 202011L
-            if (result_string.contains('.')) {
-#else
-            if (result_string.find('.') != std::string::npos) {
-#endif
-                result_string.pop_back();
-            }
-        }
-    } else {
-        result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
+    if (carry) {
+        integral_part.insert(std::begin(integral_part), '1');
     }
 
     // trim 0s to the left
-    // This assume a locale that split number using '.'
-#if __cpp_lib_string_contains >= 202011L
-    if (result_string.contains('.')) {
-#else
-    if (result_string.find('.') != std::string::npos) {
-#endif
-        auto index = result_string.length() - 1;
-        while (index > 0) {
-            if (result_string[index] == '0') {
-                result_string.pop_back();
-            } else {
-                break;
-            }
-        }
+    auto last = std::ranges::find_if_not(fractional_part | std::views::reverse, [](auto digit) {return digit == '0';});
+    fractional_part.erase(last.base(), std::end(fractional_part));
+
+    if (fractional_part.empty()) {
+        return integral_part;
     }
 
-    // If there is no more fractional value, remove the '.'
-    if (result_string.back() == '.') {
-        result_string.pop_back();
-    }
-
-    return result_string;
+    return integral_part + '.' + fractional_part;
 }
 
 }
