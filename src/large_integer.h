@@ -23,7 +23,7 @@ public:
 
     using collection_type = std::vector<underlying_type>;
 
-    static constexpr auto nb_extended_type_bits = sizeof(underlying_type) * 8;
+    static constexpr const auto nb_extended_type_bits = sizeof(underlying_type) * 8;
     static constexpr const extended_type base = extended_type{ 1 } << nb_extended_type_bits;
 
     [[nodiscard]] static constexpr std::optional<large_integer> from_string(const std::string& str_);
@@ -356,43 +356,43 @@ private:
     collection_type data;
 };
 
-large_integer operator+(const large_integer& lhs_, std::integral auto rhs_) {
+constexpr large_integer operator+(const large_integer& lhs_, std::integral auto rhs_) {
     return lhs_ + large_integer(rhs_);
 }
 
-large_integer operator+(std::integral auto lhs_, const large_integer& rhs_) {
+constexpr large_integer operator+(std::integral auto lhs_, const large_integer& rhs_) {
     return large_integer(lhs_) + rhs_;
 }
 
-large_integer operator-(const large_integer& lhs_, std::integral auto rhs_) {
+constexpr large_integer operator-(const large_integer& lhs_, std::integral auto rhs_) {
     return lhs_ - large_integer(rhs_);
 }
 
-large_integer operator-(std::integral auto lhs_, const large_integer& rhs_) {
+constexpr large_integer operator-(std::integral auto lhs_, const large_integer& rhs_) {
     return large_integer(lhs_) - rhs_;
 }
 
-large_integer operator*(const large_integer& lhs_, std::integral auto rhs_) {
+constexpr large_integer operator*(const large_integer& lhs_, std::integral auto rhs_) {
     return lhs_ * large_integer(rhs_);
 }
 
-large_integer operator*(std::integral auto lhs_, const large_integer& rhs_) {
+constexpr large_integer operator*(std::integral auto lhs_, const large_integer& rhs_) {
     return large_integer(lhs_) * rhs_;
 }
 
-std::strong_ordering operator<=>(const large_integer& lhs_, std::integral auto rhs_) {
+constexpr std::strong_ordering operator<=>(const large_integer& lhs_, std::integral auto rhs_) {
     return lhs_ <=> large_integer(rhs_);
 }
 
-std::strong_ordering operator<=>(std::integral auto lhs_, const large_integer& rhs_) {
+constexpr std::strong_ordering operator<=>(std::integral auto lhs_, const large_integer& rhs_) {
     return large_integer(lhs_) <=> rhs_;
 }
 
-bool operator==(const large_integer& lhs_, std::integral auto rhs_) {
+constexpr bool operator==(const large_integer& lhs_, std::integral auto rhs_) {
     return lhs_ == large_integer(rhs_);
 }
 
-bool operator==(std::integral auto lhs_, const large_integer& rhs_) {
+constexpr bool operator==(std::integral auto lhs_, const large_integer& rhs_) {
     return large_integer(lhs_) == rhs_;
 }
 
@@ -507,24 +507,24 @@ namespace details {
     }
 
     std::string sum;
-    large_integer::underlying_type carry = 0;
-    auto iter1 = lhs_.rbegin();
-    auto iter2 = rhs_.rbegin();
+    int carry = 0;
+    auto lhs_iter = lhs_.rbegin();
+    auto rhs_iter = rhs_.rbegin();
 
-    while (iter1 != lhs_.rend() || iter2 != rhs_.rend() || carry > 0) {
-        large_integer::underlying_type digit1 = 0;
-        if (iter1 != lhs_.rend()) {
-            digit1 = *iter1 - '0';
-            ++iter1;
+    while (lhs_iter != lhs_.rend() || rhs_iter != rhs_.rend() || carry > 0) {
+        int lhs_digit = 0;
+        if (lhs_iter != lhs_.rend()) {
+            lhs_digit = *lhs_iter - '0';
+            ++lhs_iter;
         }
 
-        large_integer::underlying_type digit2 = 0;
-        if (iter2 != rhs_.rend()) {
-            digit2 = *iter2 - '0';
-            ++iter2;
+        int rhs_digit = 0;
+        if (rhs_iter != rhs_.rend()) {
+            rhs_digit = *rhs_iter - '0';
+            ++rhs_iter;
         }
 
-        large_integer::underlying_type digitSum = digit1 + digit2 + carry;
+        const int digitSum = lhs_digit + rhs_digit + carry;
         carry = digitSum / 10;
         sum = std::to_string(digitSum % 10) + sum;
     }
@@ -550,15 +550,17 @@ namespace details {
     return result;
 }
 
-// Function to concatenate the vector elements into a single large integer represented as a string
-[[nodiscard]] constexpr std::string concatenate_integers_to_string(const std::vector<large_integer::underlying_type>& data_) {
+// Recompose data, where values are represented as data[i]*base^i, into a base 10 string
+[[nodiscard]] constexpr std::string recompose_data_as_base_10_string(const large_integer::collection_type& data_, large_integer::extended_type base_) {
     std::string result = "0";
-    for (size_t i = 0; i < data_.size(); ++i) {
+    unsigned int power = 0;
+    for (auto single_data : data_) {
         // Multiply the current element by the large_integer base
-        std::string temp = std::to_string(data_[i]);
-        for (size_t j = 0; j < i; ++j) {
-            temp = multiply_integer_as_string_by_integer(temp, large_integer::base);
+        std::string temp = std::to_string(single_data);
+        for (size_t j = 0; j < power; ++j) {
+            temp = multiply_integer_as_string_by_integer(temp, base_);
         }
+        ++power;
         // Add the current number to the result
         result = add_integers_as_string(result, temp);
     }
@@ -568,7 +570,7 @@ namespace details {
 } // namespace details
 
 [[nodiscard]] constexpr std::string to_string(const large_integer& value_) {
-    auto result = details::concatenate_integers_to_string(value_.get_data());
+    auto result = details::recompose_data_as_base_10_string(value_.get_data(), large_integer::base);
 
     if (value_.get_sign()) {
         return '-' + result;
