@@ -335,6 +335,13 @@ TEST_CASE("compute_square_root_bakhshali_method") {
 namespace details {
 
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+    assert(value_ != NAN && value_ > 0);
+
+    // Early return optimization
+    if (value_ == 0 || value_ == 1) {
+        return std::to_string(value_);
+    }
+
     // Compute integral part of the square root
     std::vector<unsigned int> integer_values;
 
@@ -493,11 +500,6 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     // Cannot calculate the root of a negative number
     if (value_ < 0) {
         return std::to_string(NAN);
-    }
-
-    // Early return optimization
-    if (value_ == 0 || value_ == 1) {
-        return std::to_string(value_);
     }
 
     return details::compute_square_root_digit_by_digit_method(value_, max_precision_);
