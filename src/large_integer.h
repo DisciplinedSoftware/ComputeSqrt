@@ -14,7 +14,7 @@
 
 
 // ----------------------------------------------------------------------------
-// Large integer to allow infinitely large integer number
+// Large integer to handle infinitely large integer number
 class large_integer {
 public:
     using underlying_type = std::uint32_t;
@@ -34,7 +34,9 @@ public:
         : large_integer(value_ < 0, to_data_collection(value_)) {}
 
     constexpr large_integer(bool sign_, std::vector<underlying_type> data_)
-        : sign(sign_), data(std::move(data_)) {}
+        : sign(sign_), data(cleanup(std::move(data_))) {
+        fix_minus_zeros();
+    }
 
     [[nodiscard]] constexpr large_integer operator-() const {
         return { !sign, data };
@@ -77,6 +79,14 @@ public:
     }
 
 private:
+    // Handle the -0 case
+    constexpr void fix_minus_zeros() {
+        if (data == collection_type{ 0 }) {
+            sign = false;
+        }
+    }
+
+    // Helper class that avoid data copies
     class large_integer_data_ref {
     public:
         constexpr large_integer_data_ref(const large_integer& other_)
@@ -99,7 +109,7 @@ private:
             bool result_sign = sign;
             auto result_data = add_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-            return cleanup({ result_sign, std::move(result_data) });
+            return { result_sign, std::move(result_data) };
         }
 
         [[nodiscard]] constexpr large_integer operator-(const large_integer_data_ref& other_) const {
@@ -117,7 +127,7 @@ private:
             bool result_sign = sign;
             auto result_data = subtract_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-            return cleanup({ result_sign, std::move(result_data) });
+            return { result_sign, std::move(result_data) };
         }
 
         [[nodiscard]] constexpr large_integer operator*(const large_integer_data_ref& other_) const {
@@ -136,7 +146,7 @@ private:
             bool result_sign = false;
             auto result_data = multiply_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-            return cleanup({ result_sign, std::move(result_data) });
+            return { result_sign, std::move(result_data) };
         }
 
         [[nodiscard]] constexpr std::strong_ordering operator<=>(const large_integer_data_ref& other_) const {
@@ -212,7 +222,7 @@ private:
             result_data[index + 1] = sum >> nb_extended_type_bits;
         }
 
-        return result_data;
+        return cleanup(std::move(result_data));
     }
 
     [[nodiscard]] static constexpr collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
@@ -265,7 +275,7 @@ private:
             result_data.emplace_back(static_cast<underlying_type>(value));
         }
 
-        return result_data;
+        return cleanup(std::move(result_data));
     }
 
     [[nodiscard]] static constexpr collection_type multiply_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
@@ -293,7 +303,7 @@ private:
             result_data[result_index] = static_cast<underlying_type>(overflow);
         }
 
-        return result_data;
+        return cleanup(std::move(result_data));
     }
 
     [[nodiscard]] static constexpr std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_) {
@@ -323,33 +333,23 @@ private:
         return std::strong_ordering::equal;
     }
 
-    [[nodiscard]] static constexpr large_integer trim_upper_zeros(large_integer&& result_) {
-        size_t index = result_.data.size();
-        while (index > 1 && result_.data[--index] == 0) {
-            result_.data.pop_back();
+    [[nodiscard]] static constexpr collection_type trim_upper_zeros(collection_type&& data_) {
+        size_t index = data_.size();
+        while (index > 1 && data_[--index] == 0) {
+            data_.pop_back();
         }
 
-        return result_;
+        return data_;
     }
 
-    // Handle the -0 case
-    static constexpr large_integer fix_minus_zeros(large_integer&& result_) {
-        if (result_.data == collection_type{ 0 }) {
-            result_.sign = false;
-        }
-
-        return std::move(result_);
-    }
-
-    [[nodiscard]] static constexpr large_integer cleanup(large_integer&& result_) {
-        result_ = trim_upper_zeros(std::move(result_));
+    [[nodiscard]] static constexpr collection_type cleanup(collection_type&& data_) {
+        // Remove useless zeros
+        data_ = trim_upper_zeros(std::move(data_));
 
         // Free unused data
-        result_.data.shrink_to_fit();
+        data_.shrink_to_fit();
 
-        result_ = fix_minus_zeros(std::move(result_));
-
-        return result_;
+        return data_;
     }
 
     bool sign{};
