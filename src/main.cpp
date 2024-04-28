@@ -335,7 +335,7 @@ TEST_CASE("compute_square_root_bakhshali_method") {
 namespace details {
 
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-    assert(value_ != NAN && value_ > 0);
+    assert(value_ != NAN && value_ >= 0);
 
     // Early return optimization
     if (value_ == 0 || value_ == 1) {
