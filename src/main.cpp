@@ -348,31 +348,18 @@ std::vector<unsigned int> split_integer_into_groups_of_2_digits(std::integral au
     return integer_values;
 }
 
-std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-    assert(value_ != NAN && value_ >= 0);
-
-    // Early return optimization
-    if (value_ == 0 || value_ == 1) {
-        return std::to_string(value_);
-    }
-
-    const auto integer_values = split_integer_into_groups_of_2_digits(value_);
-
-    large_integer remainder{ 0 };
-    large_integer result{ 0 };
-
-    auto compute_next_digit = [&remainder, &result](auto current_) {
+class next_digit_generator {
+public:
+    unsigned int operator()(auto current_) {
         // find x * (20p + x) <= remainder*100+current
-        large_integer current_remainder = remainder * 100 + current_;
+        const large_integer current_remainder = remainder * 100 + current_;
         unsigned int x{ 0 };
         large_integer sum{ 0 };
-        auto expanded_result = result * 20;
+        const auto expanded_result = result * 20;
         while (true) {
             ++x;
 
-            large_integer next_sum{ 0 };
-            next_sum = (expanded_result + x);
-            next_sum = next_sum * x;
+            large_integer next_sum = (expanded_result + x) * x;
 
             if (next_sum > current_remainder) {
                 --x;
@@ -390,9 +377,28 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         return x;
     };
 
-    const auto integral_string_rng
+    bool has_next_digit() const { return remainder != large_integer(0); }
+
+private:
+    large_integer remainder{ 0 };
+    large_integer result{ 0 };
+};
+
+std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+    assert(value_ != NAN && value_ >= 0);
+
+    // Early return optimization
+    if (value_ == 0 || value_ == 1) {
+        return std::to_string(value_);
+    }
+
+    const auto integer_values = split_integer_into_groups_of_2_digits(value_);
+
+    next_digit_generator generator;
+
+    auto integral_string_rng
         = std::views::reverse(integer_values)
-        | std::views::transform(compute_next_digit)
+        | std::views::transform(std::ref(generator))
         | std::views::transform([](auto x) {
         assert(x < 10);
         return static_cast<std::string::value_type>(x) + '0';
@@ -401,7 +407,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     std::string result_string(std::begin(integral_string_rng), std::end(integral_string_rng));
 
     // Early return optimization when the number is a perfect square
-    if (remainder == large_integer(0)) {
+    if (!generator.has_next_digit()) {
         return result_string;
     }
 
@@ -422,9 +428,9 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
 
     while (precision > 0) {
         result_string +=
-            static_cast<std::string::value_type>(compute_next_digit(next_value)) + '0';
+            static_cast<std::string::value_type>(generator(next_value)) + '0';
 
-        if (remainder == large_integer(0)) {
+        if (!generator.has_next_digit()) {
             break;
         }
 
@@ -432,7 +438,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     }
 
     // Round the last digit
-    const auto rounding_digit = compute_next_digit(next_value);
+    const auto rounding_digit = generator(next_value);
 
     const double last_digit = result_string.back() - '0';
     const double rounded_last_digit = std::round(last_digit + (static_cast<double>(rounding_digit) / 10.0));
