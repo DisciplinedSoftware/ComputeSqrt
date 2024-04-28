@@ -2,8 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-std::istream &operator>>(std::istream &stream_, large_integer &value_)
-{
+std::istream& operator>>(std::istream& stream_, large_integer& value_) {
     // Assume that the rdbuf exist and that the number is fully contains in the
     // buffer
     assert(stream_.rdbuf() != nullptr);
@@ -18,14 +17,12 @@ std::istream &operator>>(std::istream &stream_, large_integer &value_)
     return stream_;
 }
 
-std::ostream &operator<<(std::ostream &stream_, const large_integer &value_)
-{
+std::ostream& operator<<(std::ostream& stream_, const large_integer& value_) {
     stream_ << to_string(value_);
     return stream_;
 }
 
-TEST_CASE("large_integer")
-{
+TEST_CASE("large_integer") {
     using namespace std::string_literals;
     CHECK(large_integer(1) == 1);
     CHECK(large_integer(-1) == -1);

@@ -34,8 +34,7 @@ template <typename T> inline constexpr T sqrt42 = static_cast<T>(SQRT42);
 // ----------------------------------------------------------------------------
 // Print value to the console with the specified format using std::printf
 template <typename T>
-void print_using_std_printf(const char* format_, unsigned int counter_,
-    T value_) {
+void print_using_std_printf(const char* format_, unsigned int counter_, T value_) {
     int n = std::printf(format_, counter_, value_);
 
     if (n < 0) {
@@ -46,14 +45,11 @@ void print_using_std_printf(const char* format_, unsigned int counter_,
 namespace details {
 
 template <std::floating_point T>
-constexpr auto compute_square_root_exception(T value_,
-    std::invocable<T> auto func_)
-    -> T {
+constexpr auto compute_square_root_exception(T value_, std::invocable<T> auto func_) -> T {
 #if __cpp_lib_constexpr_cmath >= 202202L
     if (!std::isfinite(value_)) {
 #else
-    if (value_ == NAN || value_ == std::numeric_limits<T>::infinity() ||
-        value_ == -std::numeric_limits<T>::infinity()) {
+    if (value_ == NAN || value_ == std::numeric_limits<T>::infinity() || value_ == -std::numeric_limits<T>::infinity()) {
 #endif
         return value_;
     }
@@ -69,7 +65,7 @@ constexpr auto compute_square_root_exception(T value_,
     }
 
     return func_(value_);
-    }
+}
 
 // ----------------------------------------------------------------------------
 // Split value into its fractional and exponent part with the exponent always
@@ -78,8 +74,7 @@ template <typename T>
 #if __cpp_lib_constexpr_cmath >= 202202L
 constexpr
 #endif
-    std::pair<T, int>
-    split_into_fractional_and_even_exponent(T value_) {
+std::pair<T, int> split_into_fractional_and_even_exponent(T value_) {
     int exponent{};
     T fractional = std::frexp(value_, &exponent);
 
@@ -88,8 +83,7 @@ constexpr
         if (exponent < 0) {
             fractional /= 2;
             ++exponent;
-        }
-        else {
+        } else {
             fractional *= 2;
             --exponent;
         }
@@ -110,9 +104,9 @@ template <std::floating_point T>
 #if __cpp_lib_constexpr_cmath >= 202202L
 constexpr
 #endif
-    auto
-    compute_square_root_using_fractional_and_exponent_optimization(
-        T value_, std::invocable<T> auto func_) -> T {
+auto
+compute_square_root_using_fractional_and_exponent_optimization(
+    T value_, std::invocable<T> auto func_) -> T {
     // Split the problem into the fractional and the exponent parts
     const auto [fractional, exponent] =
         details::split_into_fractional_and_even_exponent(value_);
@@ -127,10 +121,6 @@ constexpr
     // Reconstruct the result
     return std::ldexp(result, exponent / 2);
 }
-
-} // namespace details
-
-namespace details {
 
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
@@ -168,8 +158,7 @@ auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
         // Reduce the interval
         if (square < fractional_) {
             left = middle;
-        }
-        else {
+        } else {
             right = middle;
         }
 
@@ -185,9 +174,9 @@ template <std::floating_point T>
 auto compute_square_root_binary_search_method(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
         return details::compute_square_root_using_fractional_and_exponent_optimization(
-                value_,
-                details::compute_square_root_binary_search_method_fractional<T>);
-        });
+            value_,
+            details::compute_square_root_binary_search_method_fractional<T>);
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -241,7 +230,7 @@ auto compute_square_root_heron_method(T value_) -> T {
         return details::
             compute_square_root_using_fractional_and_exponent_optimization(
                 value_, details::compute_square_root_heron_method_fractional<T>);
-        });
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -256,7 +245,7 @@ template <std::floating_point T>
 constexpr auto compute_square_root_heron_method_constexpr(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
         return details::compute_square_root_heron_method_fractional(value_);
-        });
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -318,7 +307,7 @@ auto compute_square_root_bakhshali_method(T value_) -> T {
             compute_square_root_using_fractional_and_exponent_optimization(
                 value_,
                 details::compute_square_root_bakhshali_method_fractional<T>);
-        });
+    });
 }
 
 // ----------------------------------------------------------------------------
@@ -347,7 +336,7 @@ TEST_CASE("compute_square_root_bakhshali_method") {
 // This method has been simplified and only supports computing the square root of integer value
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     // NaN is a special case
-    if (value_ == NAN) { // std::isfinite with integer is not mandatory
+    if (value_ == NAN) { // std::isfinite with integer is not mandatory in the standard
         return std::to_string(NAN);
     }
 
@@ -400,15 +389,15 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         remainder = current_remainder - sum;
 
         return x;
-        };
+    };
 
     const auto integral_string_rng
         = std::views::reverse(integer_values)
         | std::views::transform(compute_next_digit)
         | std::views::transform([](auto x) {
-                assert(x < 10);
-                return static_cast<std::string::value_type>(x) + '0';
-            });
+        assert(x < 10);
+        return static_cast<std::string::value_type>(x) + '0';
+    });
 
     std::string result_string(std::begin(integral_string_rng), std::end(integral_string_rng));
 
@@ -459,8 +448,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
             | std::views::filter([](auto c) { return c != '.'; })) { // This assume a locale that split number using '.'
             if (digit == '9') {
                 digit = '0';
-            }
-            else {
+            } else {
                 digit += 1;
                 carry = false;
                 break;
@@ -475,17 +463,15 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
 #else
             if (result_string.find('.') != std::string::npos) {
 #endif
-                    result_string.pop_back();
-                }
+                result_string.pop_back();
             }
         }
-        else
-        {
-            result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
-        }
+    } else {
+        result_string.back() = static_cast<std::string::value_type>(rounded_last_digit) + '0';
+    }
 
-        // trim 0s to the left
-        // This assume a locale that split number using '.'
+    // trim 0s to the left
+    // This assume a locale that split number using '.'
 #if __cpp_lib_string_contains >= 202011L
     if (result_string.contains('.')) {
 #else
@@ -495,8 +481,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         while (index > 0) {
             if (result_string[index] == '0') {
                 result_string.pop_back();
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -536,8 +521,7 @@ constexpr auto constexpr_type_v = constexpr_type<Value>::value;
 
 // This is a non protable version, but probably the fastest one
 #ifdef __GNUC__
-inline double sqrt_asm(double value_)
-{
+inline double sqrt_asm(double value_) {
     double result;
     asm("fldl %[n];"           // Load the operand n onto the FPU stack
         "fsqrt;"               // Perform square root operation on the top of the FPU stack
@@ -599,7 +583,7 @@ int main(int argc, const char* argv[]) {
     std::cout << ++counter << ". Using assembly fsqrt: " << sqrt_asm(42.0) << '\n';
 #endif
 
-    // Pass the value to a template expression to ensure constant expression
+    // Pass the value to a template expression as a proof of a constant expression
     std::cout << ++counter << ". Using custom function using constexpr Heron's method: " <<
 #if __cpp_nontype_template_args >= 201911L
         constexpr_type_v<compute_square_root_heron_method_constexpr(42)>
