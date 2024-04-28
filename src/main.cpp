@@ -332,24 +332,9 @@ TEST_CASE("compute_square_root_bakhshali_method") {
     CHECK(compute_square_root_bakhshali_method(2.2e-300) == Catch::Approx(std::sqrt(2.2e-300)).epsilon(std::numeric_limits<double>::epsilon()));
 }
 
-// ----------------------------------------------------------------------------
-// This method has been simplified and only supports computing the square root of integer value
+namespace details {
+
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-    // NaN is a special case
-    if (value_ == NAN) { // std::isfinite with integer is not mandatory in the standard
-        return std::to_string(NAN);
-    }
-
-    // Cannot calculate the root of a negative number
-    if (value_ < 0) {
-        return std::to_string(NAN);
-    }
-
-    // Early return optimization
-    if (value_ == 0 || value_ == 1) {
-        return std::to_string(value_);
-    }
-
     // Compute integral part of the square root
     std::vector<unsigned int> integer_values;
 
@@ -493,6 +478,29 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
     }
 
     return result_string;
+}
+
+}
+
+// ----------------------------------------------------------------------------
+// This method has been simplified and only supports computing the square root of integer value
+std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+    // NaN is a special case
+    if (value_ == NAN) { // std::isfinite with integer is not mandatory in the standard
+        return std::to_string(NAN);
+    }
+
+    // Cannot calculate the root of a negative number
+    if (value_ < 0) {
+        return std::to_string(NAN);
+    }
+
+    // Early return optimization
+    if (value_ == 0 || value_ == 1) {
+        return std::to_string(value_);
+    }
+
+    return details::compute_square_root_digit_by_digit_method(value_, max_precision_);
 }
 
 TEST_CASE("compute_square_root_digit_by_digit_method") {
