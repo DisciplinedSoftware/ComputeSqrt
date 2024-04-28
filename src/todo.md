@@ -1,6 +1,3 @@
-- Move fix_minus_zero to constructor of large_integer
-- Move cleanup to the collection_type functions
-
 - Split compute_square_root_digit_by_digit_method into guard clause and implementation
 
 - Move tests to a test file
