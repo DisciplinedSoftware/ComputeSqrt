@@ -348,7 +348,7 @@ std::vector<unsigned int> split_integer_into_groups_of_2_digits(std::integral au
     return integer_values;
 }
 
-class next_digit_generator {
+class square_root_digits_generator {
 public:
     unsigned int operator()(auto current_) {
         // find x * (20p + x) <= remainder*100+current
@@ -384,17 +384,8 @@ private:
     large_integer result{ 0 };
 };
 
-std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
-    assert(value_ != NAN && value_ >= 0);
-
-    // Early return optimization
-    if (value_ == 0 || value_ == 1) {
-        return std::to_string(value_);
-    }
-
+std::string compute_integral_part_of_square_root(std::integral auto value_, square_root_digits_generator& generator_) {
     const auto integer_values = split_integer_into_groups_of_2_digits(value_);
-
-    next_digit_generator generator;
 
     auto integral_string_rng
         = std::views::reverse(integer_values)
@@ -404,7 +395,20 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         return static_cast<std::string::value_type>(x) + '0';
     });
 
-    std::string result_string(std::begin(integral_string_rng), std::end(integral_string_rng));
+    return { std::begin(integral_string_rng), std::end(integral_string_rng) };
+}
+
+std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+    assert(value_ != NAN && value_ >= 0);
+
+    // Early return optimization
+    if (value_ == 0 || value_ == 1) {
+        return std::to_string(value_);
+    }
+
+    square_root_digits_generator generator;
+
+    auto result_string = compute_integral_part_of_square_root(value_, generator);
 
     // Early return optimization when the number is a perfect square
     if (!generator.has_next_digit()) {
