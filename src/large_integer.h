@@ -494,18 +494,6 @@ namespace details {
 [[nodiscard]] constexpr std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
     assert(!lhs_.empty() && !rhs_.empty());
 
-    if (lhs_.empty() && rhs_.empty()) {
-        return "0";
-    }
-
-    if (lhs_.empty()) {
-        return rhs_;
-    }
-
-    if (rhs_.empty()) {
-        return lhs_;
-    }
-
     std::string sum;
     int carry = 0;
     auto lhs_iter = lhs_.rbegin();
