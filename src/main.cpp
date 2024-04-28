@@ -334,6 +334,20 @@ TEST_CASE("compute_square_root_bakhshali_method") {
 
 namespace details {
 
+std::vector<unsigned int> split_integer_into_groups_of_2_digits(std::integral auto value_) {
+    assert(value_ != NAN && value_ >= 0);
+
+    std::vector<unsigned int> integer_values;
+
+    auto residual = value_;
+    while (residual > 0) {
+        integer_values.emplace_back(static_cast<unsigned int>(residual % 100));
+        residual /= 100;
+    }
+
+    return integer_values;
+}
+
 std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     assert(value_ != NAN && value_ >= 0);
 
@@ -342,14 +356,7 @@ std::string compute_square_root_digit_by_digit_method(std::integral auto value_,
         return std::to_string(value_);
     }
 
-    // Compute integral part of the square root
-    std::vector<unsigned int> integer_values;
-
-    auto residual = value_;
-    while (residual > 0) {
-        integer_values.emplace_back(static_cast<unsigned int>(residual % 100));
-        residual /= 100;
-    }
+    const auto integer_values = split_integer_into_groups_of_2_digits(value_);
 
     large_integer remainder{ 0 };
     large_integer result{ 0 };
