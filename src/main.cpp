@@ -448,6 +448,13 @@ private:
     return { integral_part_, fractional_part_ };
 }
 
+[[nodiscard]] constexpr std::string trim_lower_zeros(std::string&& fractional_part_) {
+    auto last = std::ranges::find_if_not(fractional_part_ | std::views::reverse, [](auto digit) {return digit == '0';});
+    fractional_part_.erase(last.base(), std::end(fractional_part_));
+
+    return fractional_part_;
+}
+
 [[nodiscard]] constexpr std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     assert(value_ != NAN && value_ >= 0);
 
@@ -475,9 +482,7 @@ private:
     constexpr const unsigned int next_value = 0;
     std::tie(integral_part, fractional_part) = round_last_digit(std::move(integral_part), std::move(fractional_part), generator(next_value));
 
-    // trim 0s to the right
-    auto last = std::ranges::find_if_not(fractional_part | std::views::reverse, [](auto digit) {return digit == '0';});
-    fractional_part.erase(last.base(), std::end(fractional_part));
+    fractional_part = trim_lower_zeros(std::move(fractional_part));
 
     if (fractional_part.empty()) {
         return integral_part;
