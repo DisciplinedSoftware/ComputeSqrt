@@ -414,6 +414,23 @@ private:
     return fractional_part;
 }
 
+[[nodiscard]] constexpr std::tuple<std::string, bool> propagate_carry(std::string&& number_, bool carry_) {
+    for (auto& digit : number_ | std::views::reverse) {
+        if (!carry_) {
+            break;
+        }
+
+        if (digit == '9') {
+            digit = '0';
+        } else {
+            digit += 1;
+            carry_ = false;
+        }
+    }
+
+    return { number_, carry_ };
+}
+
 [[nodiscard]] constexpr std::tuple<std::string, std::string> round_last_digit(
     std::string&& integral_part_,
     std::string&& fractional_part_,
@@ -421,30 +438,8 @@ private:
     const double rounded_last_digit = std::round((static_cast<double>(rounding_digit_) / 10.0));
 
     bool carry = rounded_last_digit >= 1;
-    for (auto& digit : fractional_part_ | std::views::reverse) {
-        if (!carry) {
-            break;
-        }
-        if (digit == '9') {
-            digit = '0';
-        } else {
-            digit += 1;
-            carry = false;
-        }
-    }
-
-    for (auto& digit : integral_part_ | std::views::reverse) {
-        if (!carry) {
-            break;
-        }
-
-        if (digit == '9') {
-            digit = '0';
-        } else {
-            digit += 1;
-            carry = false;
-        }
-    }
+    std::tie(fractional_part_, carry) = propagate_carry(std::move(fractional_part_), carry);
+    std::tie(integral_part_, carry) = propagate_carry(std::move(integral_part_), carry);
 
     if (carry) {
         integral_part_.insert(std::begin(integral_part_), '1');
@@ -480,7 +475,7 @@ private:
     constexpr const unsigned int next_value = 0;
     std::tie(integral_part, fractional_part) = round_last_digit(std::move(integral_part), std::move(fractional_part), generator(next_value));
 
-    // trim 0s to the left
+    // trim 0s to the right
     auto last = std::ranges::find_if_not(fractional_part | std::views::reverse, [](auto digit) {return digit == '0';});
     fractional_part.erase(last.base(), std::end(fractional_part));
 
