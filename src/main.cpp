@@ -400,6 +400,20 @@ private:
     return { std::begin(integral_string_rng), std::end(integral_string_rng) };
 }
 
+[[nodiscard]] constexpr std::string compute_fractional_part_of_square_root(unsigned int precision_, square_root_digits_generator& generator_) {
+    std::string fractional_part;
+    fractional_part.reserve(precision_);
+
+    // Compute the fractional part
+    while (precision_ > 0 && generator_.has_next_digit()) {
+        constexpr const unsigned int next_value = 0;
+        fractional_part += static_cast<std::string::value_type>(generator_(next_value)) + '0';
+        --precision_;
+    }
+
+    return fractional_part;
+}
+
 [[nodiscard]] constexpr std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     assert(value_ != NAN && value_ >= 0);
 
@@ -422,25 +436,10 @@ private:
         ? max_precision_ - integral_part.length()
         : 0;
 
-    // Adjust capacity of fractional part
-    std::string fractional_part;
-    fractional_part.reserve(precision);
-
-    // Compute the fractional part
-    constexpr unsigned int next_value = 0;
-
-    while (precision > 0) {
-        fractional_part +=
-            static_cast<std::string::value_type>(generator(next_value)) + '0';
-
-        if (!generator.has_next_digit()) {
-            break;
-        }
-
-        --precision;
-    }
+    auto fractional_part = compute_fractional_part_of_square_root(precision, generator);
 
     // Round the last digit
+    constexpr const unsigned int next_value = 0;
     const auto rounding_digit = generator(next_value);
 
     const double rounded_last_digit = std::round((static_cast<double>(rounding_digit) / 10.0));
