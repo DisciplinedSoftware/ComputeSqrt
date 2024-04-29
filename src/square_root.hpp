@@ -9,7 +9,6 @@
 #include <numeric>
 #include <optional>
 #include <ranges>
-#include <span>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -195,9 +194,9 @@ constexpr auto compute_square_root_heron_method_fractional(T fractional_) -> T {
 template <std::floating_point T>
 auto compute_square_root_heron_method(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
-        return details::
-            compute_square_root_using_fractional_and_exponent_optimization(
-                value_, details::compute_square_root_heron_method_fractional<T>);
+        return details::compute_square_root_using_fractional_and_exponent_optimization(
+            value_,
+            details::compute_square_root_heron_method_fractional<T>);
     });
 }
 
@@ -208,11 +207,23 @@ double compute_square_root_heron_method(std::integral auto value_) {
 }
 
 // ----------------------------------------------------------------------------
+// Helper function to check if a function is constexpr
+template<std::invocable F, int = (F{}(), 0) >
+constexpr bool is_constexpr(F) { return true; }
+constexpr bool is_constexpr(...) { return false; }
+
+// ----------------------------------------------------------------------------
 // Compute the square root using heron's method
 template <std::floating_point T>
 constexpr auto compute_square_root_heron_method_constexpr(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
-        return details::compute_square_root_heron_method_fractional(value_);
+        if constexpr (is_constexpr([]() { details::compute_square_root_using_fractional_and_exponent_optimization(T{ 0 }, [](auto) { return 0; }); })) {
+            return details::compute_square_root_using_fractional_and_exponent_optimization(
+                value_,
+                details::compute_square_root_heron_method_fractional<T>);
+        } else {
+            return details::compute_square_root_heron_method_fractional(value_);
+        }
     });
 }
 
