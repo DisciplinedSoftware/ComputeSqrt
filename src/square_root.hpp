@@ -27,7 +27,7 @@ template <typename T> inline constexpr T sqrt42 = static_cast<T>(SQRT42);
 namespace details {
 
 template <std::floating_point T>
-constexpr auto compute_square_root_exception(T value_, std::invocable<T> auto func_) -> T {
+[[nodiscard]] constexpr auto compute_square_root_exception(T value_, std::invocable<T> auto func_) -> T {
 #if __cpp_lib_constexpr_cmath >= 202202L
     if (!std::isfinite(value_)) {
 #else
@@ -53,6 +53,7 @@ constexpr auto compute_square_root_exception(T value_, std::invocable<T> auto fu
 // Split value into its fractional and exponent part with the exponent always
 // even fractional part is (-2, -0.25], [0.25, 2) return [fractional, exponent]
 template <typename T>
+[[nodiscard]]
 #if __cpp_lib_constexpr_cmath >= 202202L
 constexpr
 #endif
@@ -83,11 +84,11 @@ std::pair<T, int> split_into_fractional_and_even_exponent(T value_) {
 // To make this optimization works the exponent must be even
 // This is less optimal when the value is a perfect square
 template <std::floating_point T>
+[[nodiscard]]
 #if __cpp_lib_constexpr_cmath >= 202202L
 constexpr
 #endif
-auto
-compute_square_root_using_fractional_and_exponent_optimization(
+auto compute_square_root_using_fractional_and_exponent_optimization(
     T value_, std::invocable<T> auto func_) -> T {
     // Split the problem into the fractional and the exponent parts
     const auto [fractional, exponent] =
@@ -107,7 +108,7 @@ compute_square_root_using_fractional_and_exponent_optimization(
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
 template <std::floating_point T>
-auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
+[[nodiscard]] auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
     assert(0 <= fractional_ && fractional_ < 2);
 
     // Search from zero to fractional_
@@ -153,7 +154,7 @@ auto compute_square_root_binary_search_method_fractional(T fractional_) -> T {
 // ----------------------------------------------------------------------------
 // Compute the square root using a binary search
 template <std::floating_point T>
-auto compute_square_root_binary_search_method(T value_) -> T {
+[[nodiscard]] auto compute_square_root_binary_search_method(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
         return details::compute_square_root_using_fractional_and_exponent_optimization(
             value_,
@@ -163,7 +164,7 @@ auto compute_square_root_binary_search_method(T value_) -> T {
 
 // ----------------------------------------------------------------------------
 // Overload for integral value
-double compute_square_root_binary_search_method(std::integral auto value_) {
+[[nodiscard]] double compute_square_root_binary_search_method(std::integral auto value_) {
     return compute_square_root_binary_search_method<double>(value_);
 }
 
@@ -172,7 +173,7 @@ namespace details {
 // ----------------------------------------------------------------------------
 // Compute square root of the fractional part
 template <std::floating_point T>
-constexpr auto compute_square_root_heron_method_fractional(T fractional_) -> T {
+[[nodiscard]] constexpr auto compute_square_root_heron_method_fractional(T fractional_) -> T {
     T x = fractional_ / 2;
     T old = x;
 
@@ -192,7 +193,7 @@ constexpr auto compute_square_root_heron_method_fractional(T fractional_) -> T {
 // ----------------------------------------------------------------------------
 // Compute the square root using heron's method
 template <std::floating_point T>
-auto compute_square_root_heron_method(T value_) -> T {
+[[nodiscard]] auto compute_square_root_heron_method(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
         return details::compute_square_root_using_fractional_and_exponent_optimization(
             value_,
@@ -202,22 +203,22 @@ auto compute_square_root_heron_method(T value_) -> T {
 
 // ----------------------------------------------------------------------------
 // Overload for integral value
-double compute_square_root_heron_method(std::integral auto value_) {
+[[nodiscard]] double compute_square_root_heron_method(std::integral auto value_) {
     return compute_square_root_heron_method<double>(value_);
 }
 
 // ----------------------------------------------------------------------------
 // Helper function to check if a function is constexpr
 template<std::invocable F, int = (F{}(), 0) >
-constexpr bool is_constexpr(F) { return true; }
-constexpr bool is_constexpr(...) { return false; }
+[[nodiscard]] constexpr bool is_constexpr(F) { return true; }
+[[nodiscard]] constexpr bool is_constexpr(...) { return false; }
 
 // ----------------------------------------------------------------------------
 // Compute the square root using heron's method
 template <std::floating_point T>
-constexpr auto compute_square_root_heron_method_constexpr(T value_) -> T {
+[[nodiscard]] constexpr auto compute_square_root_heron_method_constexpr(T value_) -> T {
     return details::compute_square_root_exception(value_, [](T value_) {
-        if constexpr (is_constexpr([]() { details::compute_square_root_using_fractional_and_exponent_optimization(T{ 0 }, [](auto) { return 0; }); })) {
+        if constexpr (is_constexpr([]() { std::ignore = details::compute_square_root_using_fractional_and_exponent_optimization(T{ 0 }, [](auto) { return 0; }); })) {
             return details::compute_square_root_using_fractional_and_exponent_optimization(
                 value_,
                 details::compute_square_root_heron_method_fractional<T>);
@@ -229,8 +230,7 @@ constexpr auto compute_square_root_heron_method_constexpr(T value_) -> T {
 
 // ----------------------------------------------------------------------------
 // Overload for integral value
-constexpr double
-compute_square_root_heron_method_constexpr(std::integral auto value_) {
+[[nodiscard]] constexpr double compute_square_root_heron_method_constexpr(std::integral auto value_) {
     return compute_square_root_heron_method_constexpr<double>(value_);
 }
 
