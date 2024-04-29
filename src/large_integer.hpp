@@ -1,6 +1,5 @@
-
-#ifndef LARGE_INTEGER
-#define LARGE_INTEGER
+#ifndef LARGE_INTEGER_HPP
+#define LARGE_INTEGER_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -570,4 +569,4 @@ namespace details {
 std::istream& operator>>(std::istream& stream_, large_integer& value_);
 std::ostream& operator<<(std::ostream& stream_, const large_integer& value_);
 
-#endif // LARGE_INTEGER
+#endif // LARGE_INTEGER_HPP
