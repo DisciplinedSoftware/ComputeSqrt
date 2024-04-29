@@ -414,6 +414,45 @@ private:
     return fractional_part;
 }
 
+[[nodiscard]] constexpr std::tuple<std::string, std::string> round_last_digit(
+    std::string&& integral_part_,
+    std::string&& fractional_part_,
+    unsigned int rounding_digit_) {
+    const double rounded_last_digit = std::round((static_cast<double>(rounding_digit_) / 10.0));
+
+    bool carry = rounded_last_digit >= 1;
+    for (auto& digit : fractional_part_ | std::views::reverse) {
+        if (!carry) {
+            break;
+        }
+        if (digit == '9') {
+            digit = '0';
+        } else {
+            digit += 1;
+            carry = false;
+        }
+    }
+
+    for (auto& digit : integral_part_ | std::views::reverse) {
+        if (!carry) {
+            break;
+        }
+
+        if (digit == '9') {
+            digit = '0';
+        } else {
+            digit += 1;
+            carry = false;
+        }
+    }
+
+    if (carry) {
+        integral_part_.insert(std::begin(integral_part_), '1');
+    }
+
+    return { integral_part_, fractional_part_ };
+}
+
 [[nodiscard]] constexpr std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
     assert(value_ != NAN && value_ >= 0);
 
@@ -438,40 +477,8 @@ private:
 
     auto fractional_part = compute_fractional_part_of_square_root(precision, generator);
 
-    // Round the last digit
     constexpr const unsigned int next_value = 0;
-    const auto rounding_digit = generator(next_value);
-
-    const double rounded_last_digit = std::round((static_cast<double>(rounding_digit) / 10.0));
-
-    bool carry = rounded_last_digit >= 1;
-    for (auto& digit : fractional_part | std::views::reverse) {
-        if (!carry) {
-            break;
-        }
-        if (digit == '9') {
-            digit = '0';
-        } else {
-            digit += 1;
-            carry = false;
-        }
-    }
-
-    if (carry) {
-        for (auto& digit : integral_part) {
-            if (digit == '9') {
-                digit = '0';
-            } else {
-                digit += 1;
-                carry = false;
-                break;
-            }
-        }
-    }
-
-    if (carry) {
-        integral_part.insert(std::begin(integral_part), '1');
-    }
+    std::tie(integral_part, fractional_part) = round_last_digit(std::move(integral_part), std::move(fractional_part), generator(next_value));
 
     // trim 0s to the left
     auto last = std::ranges::find_if_not(fractional_part | std::views::reverse, [](auto digit) {return digit == '0';});
