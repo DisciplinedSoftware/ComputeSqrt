@@ -9,22 +9,18 @@ namespace details {
     const large_integer current_remainder = remainder * 100 + current_;
     unsigned int x{ 0 };
     large_integer sum{ 0 };
+    large_integer next_sum{ 0 };
     const auto expanded_result = result * 20;
-    while (true) {
-        ++x;
-
-        large_integer next_sum = (expanded_result + x) * x;
-
-        if (next_sum > current_remainder) {
-            --x;
-            break;
-        }
-
+    while (next_sum <= current_remainder) {
         sum = next_sum;
+        ++x;
+        next_sum = (expanded_result + x) * x;
     }
 
-    assert(x < 10);
+    // Went one step too far
+    --x;
 
+    assert(x < 10);
     result = result * 10 + x;
     remainder = current_remainder - sum;
 
