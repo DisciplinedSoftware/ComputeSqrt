@@ -1,5 +1,3 @@
-- Split compute_square_root_digit_by_digit_method into guard clause and implementation
-
 - Move tests to a test file
 
 - For multiply_large_unsigned_integer_sorted

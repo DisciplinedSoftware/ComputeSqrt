@@ -526,16 +526,9 @@ TEST_CASE("compute_square_root_digit_by_digit_method") {
     CHECK(compute_square_root_digit_by_digit_method(999999, 5) == "1000"s);
 }
 
-template <double Value> struct constexpr_type {
-    static constexpr double value = Value;
-};
-
-template <double Value>
-constexpr auto constexpr_type_v = constexpr_type<Value>::value;
-
 // This is a non protable version, but probably the fastest one
 #ifdef __GNUC__
-inline double sqrt_asm(double value_) {
+inline double compute_square_root_assembly_method(double value_) {
     double result;
     asm("fldl %[n];"           // Load the operand n onto the FPU stack
         "fsqrt;"               // Perform square root operation on the top of the FPU stack
@@ -545,7 +538,30 @@ inline double sqrt_asm(double value_) {
     );
     return result;
 }
+
+// ----------------------------------------------------------------------------
+// Test cases
+TEST_CASE("compute_square_root_assembly_method") {
+    CHECK(compute_square_root_assembly_method(0) == std::sqrt(0));
+    CHECK(compute_square_root_assembly_method(-0) == std::sqrt(-0));
+    CHECK(compute_square_root_assembly_method(1) == std::sqrt(1));
+    CHECK(compute_square_root_assembly_method(4) == std::sqrt(4));
+    CHECK(compute_square_root_assembly_method(2) == Catch::Approx(std::numbers::sqrt2).epsilon(std::numeric_limits<double>::epsilon()));
+    CHECK(compute_square_root_assembly_method(780.14) == Catch::Approx(std::sqrt(780.14)).epsilon(std::numeric_limits<double>::epsilon()));
+    CHECK(compute_square_root_assembly_method(0.5) == Catch::Approx(std::sqrt(0.5)).epsilon(std::numeric_limits<double>::epsilon()));
+    CHECK(compute_square_root_assembly_method(42) == Catch::Approx(SQRT42 /*std::sqrt(42)*/).epsilon(std::numeric_limits<double>::epsilon()));
+    CHECK(compute_square_root_assembly_method(1e-15) == Catch::Approx(std::sqrt(1e-15)).epsilon(std::numeric_limits<double>::epsilon()));
+    CHECK(compute_square_root_assembly_method(1e-300) == Catch::Approx(std::sqrt(1e-300)).epsilon(std::numeric_limits<double>::epsilon()));
+    CHECK(compute_square_root_assembly_method(2.2e-300) == Catch::Approx(std::sqrt(2.2e-300)).epsilon(std::numeric_limits<double>::epsilon()));
+}
 #endif
+
+template <double Value> struct constexpr_type {
+    static constexpr double value = Value;
+};
+
+template <double Value>
+constexpr auto constexpr_type_v = constexpr_type<Value>::value;
 
 int main(int argc, const char* argv[]) {
     const int result = Catch::Session().run(argc, argv);
@@ -594,7 +610,7 @@ int main(int argc, const char* argv[]) {
     std::cout << ++counter << ". Using std::pow: " << std::pow(42.0l, 0.5l) << '\n';
 
 #ifdef __GNUC__
-    std::cout << ++counter << ". Using assembly fsqrt: " << sqrt_asm(42.0) << '\n';
+    std::cout << ++counter << ". Using assembly fsqrt: " << compute_square_root_assembly_method(42.0) << '\n';
 #endif
 
     // Pass the value to a template expression as a proof of a constant expression
