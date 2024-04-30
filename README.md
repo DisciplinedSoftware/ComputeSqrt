@@ -15,11 +15,9 @@ Tests are done using the [catch2](https://github.com/catchorg/Catch2) framework.
 Run the following commands in the terminal.
 
 ``` bash
-{
 ./generate.sh
 cmake --build build
 ./build/ComputeSqrtOf42
-}
 ```
 
 > The command ./generate.sh is used to generate the build files and it only needs to be run once.
