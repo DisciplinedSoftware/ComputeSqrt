@@ -61,6 +61,7 @@ TEST_CASE("Square root") {
         CHECK(compute_square_root_digit_by_digit_method(999999, 5) == "1000"s);
     }
 
+#ifdef __GNUC__
     SECTION("compute_square_root_assembly_method") {
         CHECK(compute_square_root_assembly_method(0) == std::sqrt(0));
         CHECK(compute_square_root_assembly_method(-0) == std::sqrt(-0));
@@ -74,4 +75,5 @@ TEST_CASE("Square root") {
         CHECK(compute_square_root_assembly_method(1e-300) == Catch::Approx(std::sqrt(1e-300)).epsilon(std::numeric_limits<double>::epsilon()));
         CHECK(compute_square_root_assembly_method(2.2e-300) == Catch::Approx(std::sqrt(2.2e-300)).epsilon(std::numeric_limits<double>::epsilon()));
     }
+#endif // __GNUC__
 }
