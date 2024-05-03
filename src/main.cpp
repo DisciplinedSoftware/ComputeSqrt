@@ -93,7 +93,7 @@ int main(int argc, const char* argv[]) {
 
     std::cout << ++counter << ". Using infinite digits streaming:\n";
 
-    std::cout << "Press Enter to start streaming and Enter quit...\n";
+    std::cout << "Press Enter to start streaming and Enter to quit...\n";
     wait_for_enter_to_be_pressed();
 
     std::jthread worker([](std::stop_token stop_) { compute_square_root_digit_by_digit_method(std::cout, 42, stop_); });
