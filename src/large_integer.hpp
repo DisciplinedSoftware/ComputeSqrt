@@ -25,17 +25,24 @@ public:
     static constexpr const auto nb_extended_type_bits = sizeof(underlying_type) * 8;
     static constexpr const extended_type base = extended_type{ 1 } << nb_extended_type_bits;
 
+    // Factory method to create a large integer from string
     [[nodiscard]] static constexpr std::optional<large_integer> from_string(const std::string& str_);
 
+    // Default constructor
     constexpr large_integer() : large_integer(false, { 0 }) {}
 
+    // Construct from an integral value
     constexpr large_integer(std::integral auto value_)
         : large_integer(value_ < 0, to_data_collection(value_)) {}
 
+    // Construct from raw data
     constexpr large_integer(bool sign_, std::vector<underlying_type> data_)
         : sign(sign_), data(cleanup(std::move(data_))) {
         fix_minus_zeros();
     }
+
+    // ------------------------------------------------------------------------
+    // Operators
 
     [[nodiscard]] constexpr large_integer operator-() const {
         return { !sign, data };
@@ -62,12 +69,14 @@ public:
     }
 
     [[nodiscard]] constexpr bool operator==(const large_integer& rhs_) const {
-        return (*this <=> large_integer(rhs_)) == std::strong_ordering::equal;
+        return (*this <=> rhs_) == std::strong_ordering::equal;
     }
 
     [[nodiscard]] constexpr bool operator==(std::integral auto rhs_) const {
         return (*this <=> large_integer(rhs_)) == std::strong_ordering::equal;
     }
+
+    // ------------------------------------------------------------------------
 
     [[nodiscard]] constexpr bool get_sign() const {
         return sign;
@@ -88,11 +97,16 @@ private:
     // Helper class that avoid data copies
     class large_integer_data_ref {
     public:
+        // Large integer constructor
         constexpr large_integer_data_ref(const large_integer& other_)
             : large_integer_data_ref(other_.sign, std::cref(other_.data)) {}
 
+        // Raw data constructor
         constexpr large_integer_data_ref(bool sign_, const std::vector<underlying_type>& data_)
             : sign(sign_), data(std::cref(data_)) {}
+
+        // --------------------------------------------------------------------
+        // Operators
 
         [[nodiscard]] constexpr large_integer operator+(const large_integer_data_ref& other_) const {
             // Enforce signs to be the same
@@ -158,11 +172,15 @@ private:
             return compare_large_unsigned_integer(data, other_.data);
         }
 
+        // --------------------------------------------------------------------
+
     private:
         bool sign{};
         std::reference_wrapper<const collection_type> data;
     };
 
+    // ------------------------------------------------------------------------
+    // Convert an integral value to raw data
     [[nodiscard]] static constexpr collection_type to_data_collection(std::integral auto value_) {
         std::vector<underlying_type> data;
         if constexpr (std::signed_integral<decltype(value_)>) {
@@ -184,11 +202,15 @@ private:
         return data;
     }
 
+    // ------------------------------------------------------------------------
+    // Validate is collections are sorted (lhs_ <= rhs_)
     [[nodiscard]] static constexpr bool sorted(const collection_type& lhs_, const collection_type& rhs_) {
         const auto result = compare_large_unsigned_integer(lhs_, rhs_);
         return result == std::strong_ordering::equal || result == std::strong_ordering::greater;
     }
 
+    // ------------------------------------------------------------------------
+    // Helper function that add 2 sorted large unsigned intergers
     [[nodiscard]] static constexpr collection_type add_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(sorted(lhs_, rhs_));
 
@@ -224,6 +246,8 @@ private:
         return cleanup(std::move(result_data));
     }
 
+    // ------------------------------------------------------------------------
+    // Helper function that subtract 2 sorted large unsigned intergers
     [[nodiscard]] static constexpr collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(sorted(lhs_, rhs_));
 
@@ -277,6 +301,8 @@ private:
         return cleanup(std::move(result_data));
     }
 
+    // ------------------------------------------------------------------------
+    // Helper function that multiply 2 sorted large unsigned intergers
     [[nodiscard]] static constexpr collection_type multiply_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
         assert(sorted(lhs_, rhs_));
 
@@ -305,6 +331,8 @@ private:
         return cleanup(std::move(result_data));
     }
 
+    // ------------------------------------------------------------------------
+    // Helper function that compare 2 large unsigned intergers
     [[nodiscard]] static constexpr std::strong_ordering compare_large_unsigned_integer(const collection_type& lhs_, const collection_type& rhs_) {
         if (lhs_.size() != rhs_.size()) {
             return (lhs_.size() < rhs_.size())
@@ -316,7 +344,8 @@ private:
         for (const auto& [lhs, rhs] :
             std::views::zip(lhs_, rhs_) | std::views::reverse) {
             if (lhs != rhs) {
-                return (lhs < rhs) ? std::strong_ordering::less
+                return (lhs < rhs)
+                    ? std::strong_ordering::less
                     : std::strong_ordering::greater;
             }
         }
@@ -324,7 +353,8 @@ private:
         auto [it_lhs, it_rhs] = std::ranges::mismatch(lhs_ | std::views::reverse,
             rhs_ | std::views::reverse);
         if (it_lhs != lhs_.rend()) {
-            return (*it_lhs < *it_rhs) ? std::strong_ordering::less
+            return (*it_lhs < *it_rhs)
+                ? std::strong_ordering::less
                 : std::strong_ordering::greater;
         }
 #endif
@@ -332,6 +362,8 @@ private:
         return std::strong_ordering::equal;
     }
 
+    // ------------------------------------------------------------------------
+    // Helper function that trims the usless upper zeros
     [[nodiscard]] static constexpr collection_type trim_upper_zeros(collection_type&& data_) {
         size_t index = data_.size();
         while (index > 1 && data_[--index] == 0) {
@@ -341,6 +373,8 @@ private:
         return data_;
     }
 
+    // ------------------------------------------------------------------------
+    // cleanup data to reduce the memory footprint and useless computation
     [[nodiscard]] static constexpr collection_type cleanup(collection_type&& data_) {
         // Remove useless zeros
         data_ = trim_upper_zeros(std::move(data_));
@@ -350,6 +384,8 @@ private:
 
         return data_;
     }
+
+    // ------------------------------------------------------------------------
 
     bool sign{};
     collection_type data;
