@@ -51,14 +51,14 @@ TEST_CASE("Square root") {
         CHECK(compute_square_root_digit_by_digit_method(-0, 0) == "0"s);
         CHECK(compute_square_root_digit_by_digit_method(1, 0) == "1"s);
         CHECK(compute_square_root_digit_by_digit_method(4, 0) == "2"s);
-        CHECK(compute_square_root_digit_by_digit_method(2, 32) == "1.4142135623730950488016887242097"s);
-        CHECK(compute_square_root_digit_by_digit_method(42, 31) == "6.480740698407860230965967436088"s);
-        CHECK(compute_square_root_digit_by_digit_method(42, 100) == "6.480740698407860230965967436087996657705204307058346549711354397809617377844044371400360906605610236"s);
+        CHECK(compute_square_root_digit_by_digit_method(2, 31) == "1.4142135623730950488016887242097"s);
+        CHECK(compute_square_root_digit_by_digit_method(42, 30) == "6.480740698407860230965967436088"s);
+        CHECK(compute_square_root_digit_by_digit_method(42, 100) == "6.4807406984078602309659674360879966577052043070583465497113543978096173778440443714003609066056102357"s);
 
-        CHECK(compute_square_root_digit_by_digit_method(99, 1) == "10"s);
-        CHECK(compute_square_root_digit_by_digit_method(99, 2) == "9.9"s);
-        CHECK(compute_square_root_digit_by_digit_method(9999, 3) == "100"s);
-        CHECK(compute_square_root_digit_by_digit_method(999999, 5) == "1000"s);
+        CHECK(compute_square_root_digit_by_digit_method(99, 0) == "10"s);
+        CHECK(compute_square_root_digit_by_digit_method(99, 1) == "9.9"s);
+        CHECK(compute_square_root_digit_by_digit_method(9999, 0) == "100"s);
+        CHECK(compute_square_root_digit_by_digit_method(999999, 1) == "1000"s);
     }
 
 #ifdef __GNUC__

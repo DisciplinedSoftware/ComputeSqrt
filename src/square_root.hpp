@@ -327,7 +327,7 @@ private:
 [[nodiscard]] std::tuple<std::string, std::string> round_last_digit(std::string&& integral_part_, std::string&& fractional_part_, unsigned int rounding_digit_);
 [[nodiscard]] std::string trim_lower_zeros(std::string&& fractional_part_);
 
-[[nodiscard]] std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+[[nodiscard]] std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int precision_) {
     assert(value_ != NAN && value_ >= 0);
 
     // Early return optimization
@@ -344,12 +344,7 @@ private:
         return integral_part;
     }
 
-    // Adjust precision according to the number of integral digits
-    auto precision = max_precision_ > integral_part.length()
-        ? max_precision_ - integral_part.length()
-        : 0;
-
-    auto fractional_part = compute_fractional_part_of_square_root(precision, generator);
+    auto fractional_part = compute_fractional_part_of_square_root(precision_, generator);
 
     constexpr const unsigned int next_value = 0;
     std::tie(integral_part, fractional_part) = round_last_digit(std::move(integral_part), std::move(fractional_part), generator(next_value));
@@ -367,7 +362,7 @@ private:
 
 // ----------------------------------------------------------------------------
 // This method has been simplified and only supports computing the square root of integer value
-[[nodiscard]] std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int max_precision_) {
+[[nodiscard]] std::string compute_square_root_digit_by_digit_method(std::integral auto value_, unsigned int precision_) {
     // NaN is a special case
     if (value_ == NAN) { // std::isfinite with integer is not mandatory in the standard
         return std::to_string(NAN);
@@ -378,7 +373,7 @@ private:
         return std::to_string(NAN);
     }
 
-    return details::compute_square_root_digit_by_digit_method(value_, max_precision_);
+    return details::compute_square_root_digit_by_digit_method(value_, precision_);
 }
 
 // ----------------------------------------------------------------------------
