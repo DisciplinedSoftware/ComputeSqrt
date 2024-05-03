@@ -83,4 +83,13 @@ namespace details {
     return fractional_part_;
 }
 
+void compute_fractional_part_of_square_root(std::ostream& stream_, square_root_digits_generator& generator_, std::stop_token stop_) {
+    while (!stop_.stop_requested() && generator_.has_next_digit()) {
+        constexpr const unsigned int next_value = 0;
+        stream_ << generator_(next_value) << std::flush;    // Flush stream for smoother display
+    }
+
+    return;
+}
+
 }

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <thread>
 
 #include <catch2/catch_session.hpp>
 
@@ -80,7 +81,18 @@ int main(int argc, const char* argv[]) {
     std::cout << ++counter << ". Using custom function using Newton's method: " << compute_square_root_binary_search_method(42) << '\n';
     std::cout << ++counter << ". Using custom function using Heron's method: " << compute_square_root_heron_method(42) << '\n';
     std::cout << ++counter << ". Using custom function using Bakhshali's method: " << compute_square_root_bakhshali_method(42) << '\n';
+
     std::cout << ++counter << ". Using infinite digits (only show 1k): " << compute_square_root_digit_by_digit_method(42, 1'000) << '\n';
+
+    std::cout << ++counter << ". Using infinite digits streaming:\n";
+
+    std::cout << "Press enter to quit...\n";
+    std::jthread worker([](std::stop_token stop_) { compute_square_root_digit_by_digit_method(std::cout, 42, stop_); });
+
+    char c;
+    std::cin.get(c);
+
+    worker.request_stop();
 
     return result;
 }

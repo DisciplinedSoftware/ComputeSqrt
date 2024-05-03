@@ -10,6 +10,7 @@
 #include <optional>
 #include <ranges>
 #include <string>
+#include <stop_token>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -280,6 +281,8 @@ template <std::floating_point T>
     return compute_square_root_bakhshali_method<double>(value_);
 }
 
+// ----------------------------------------------------------------------------
+
 namespace details {
 
 class square_root_digits_generator {
@@ -378,6 +381,70 @@ private:
     return details::compute_square_root_digit_by_digit_method(value_, max_precision_);
 }
 
+// ----------------------------------------------------------------------------
+
+namespace details {
+
+void compute_integral_part_of_square_root(std::ostream& stream_, std::integral auto value_, square_root_digits_generator& generator_) {
+    const auto integer_values = split_integer_into_groups_of_2_digits(value_);
+
+    const auto inputs
+        = std::views::reverse(integer_values)
+        | std::views::transform(std::ref(generator_));
+
+    std::ranges::for_each(inputs, [&stream_](const auto x) {
+        stream_ << x;
+    });
+
+    return;
+}
+
+void compute_fractional_part_of_square_root(std::ostream& stream_, square_root_digits_generator& generator_, std::stop_token stop_);
+
+void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integral auto value_, std::stop_token stop_) {
+    assert(value_ != NAN && value_ >= 0);
+
+    // Early return optimization
+    if (value_ == 0 || value_ == 1) {
+        stream_ << value_;
+        return;
+    }
+
+    square_root_digits_generator generator;
+
+    compute_integral_part_of_square_root(stream_, value_, generator);
+
+    // Early return optimization when the number is a perfect square
+    if (!generator.has_next_digit()) {
+        return;
+    }
+
+    stream_ << '.';
+
+    compute_fractional_part_of_square_root(stream_, generator, stop_);
+}
+
+}
+
+// ----------------------------------------------------------------------------
+// Stream the value of the square root one (decimal) digit at a time
+void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integral auto value_, std::stop_token stop_) {
+    // NaN is a special case
+    if (value_ == NAN) { // std::isfinite with integer is not mandatory in the standard
+        stream_ << NAN;
+        return;
+    }
+
+    // Cannot calculate the root of a negative number
+    if (value_ < 0) {
+        stream_ << NAN;
+        return;
+    }
+
+    details::compute_square_root_digit_by_digit_method(stream_, value_, stop_);
+}
+
+// ----------------------------------------------------------------------------
 // This is a non protable version, but probably the fastest one
 #ifdef __GNUC__
 [[nodiscard]] inline double compute_square_root_assembly_method(double value_) {
