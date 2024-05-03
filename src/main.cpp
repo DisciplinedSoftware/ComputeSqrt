@@ -96,7 +96,7 @@ int main(int argc, const char* argv[]) {
     const auto start = std::chrono::high_resolution_clock::now();
     const auto value = compute_square_root_digit_by_digit_method(42, 5'000);
     const auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << "time taken for 5'000 digits: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start) << '\n';
+    std::cout << "Time taken to compute 5'000 digits: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start) << '\n';
 
     std::cout << ++counter << ". Using infinite digits streaming:\n";
 
