@@ -1,10 +1,12 @@
 ﻿// Output the square root of 42 in different ways
 
 #include <charconv>
+#include <chrono>
 #include <format>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
+#include <ratio>
 #include <string>
 #include <thread>
 
@@ -90,6 +92,11 @@ int main(int argc, const char* argv[]) {
     std::cout << ++counter << ". Using custom function using Bakhshali's method: " << compute_square_root_bakhshali_method(42) << '\n';
 
     std::cout << ++counter << ". Using infinite digits (only show 1k): " << compute_square_root_digit_by_digit_method(42, 1'000) << '\n';
+
+    const auto start = std::chrono::high_resolution_clock::now();
+    const auto value = compute_square_root_digit_by_digit_method(42, 5'000);
+    const auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << "time taken for 5'000 digits: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start) << '\n';
 
     std::cout << ++counter << ". Using infinite digits streaming:\n";
 
