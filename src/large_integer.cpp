@@ -246,7 +246,7 @@ large_integer::data_ref::data_ref(bool sign_, const std::vector<underlying_type>
     bool result_sign = sign;
     auto result_data = add_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-    return { result_sign, std::move(result_data) };
+    return { result_sign, result_data };
 }
 
 // ----------------------------------------------------------------------------
@@ -260,13 +260,13 @@ large_integer::data_ref::data_ref(bool sign_, const std::vector<underlying_type>
     // Enforce lhs to be larger than rhs
     if (*this < other_) {
         auto result = other_ - *this;
-        return { !result.sign, std::move(result.data) };
+        return { !result.sign, result.data };
     }
 
     bool result_sign = sign;
     auto result_data = subtract_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-    return { result_sign, std::move(result_data) };
+    return { result_sign, result_data };
 }
 
 // ----------------------------------------------------------------------------
@@ -276,7 +276,7 @@ large_integer::data_ref::data_ref(bool sign_, const std::vector<underlying_type>
     if (sign != other_.sign) {
         bool result_sign = true;
         auto result = *this * data_ref(!other_.sign, other_.data.get());
-        return { result_sign, std::move(result.data) };
+        return { result_sign, result.data };
     }
 
     // Enforce lhs to be larger than rhs
@@ -287,7 +287,7 @@ large_integer::data_ref::data_ref(bool sign_, const std::vector<underlying_type>
     bool result_sign = false;
     auto result_data = multiply_large_unsigned_integer_sorted(data.get(), other_.data.get());
 
-    return { result_sign, std::move(result_data) };
+    return { result_sign, result_data };
 }
 
 // ----------------------------------------------------------------------------
@@ -464,7 +464,7 @@ namespace details {
             large_integer::base);
     } while (number != "0");
 
-    return std::make_optional<large_integer>(sign, std::move(data));
+    return std::make_optional<large_integer>(sign, data);
 }
 
 // ----------------------------------------------------------------------------
