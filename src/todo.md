@@ -1,15 +1,15 @@
-- Use dichotomic in square_root_digits_generator instead of a linear search
+- For multiply_large_unsigned_integer_sorted
+  - Use Karatsuba algorithm instead of the naive implementation
+  - Use Toom-Cook algorithm
+  - Use Schönhage–Strassen algorithm
+
+- Use coroutine to generate digits
 
 - Maybe clean up the whole projet and keep only the infinite stream of digits
 
 - Use multithread algorithms for large integer
 
 - Use std::to_chars (#include <charconv>)
-
-- For multiply_large_unsigned_integer_sorted
-  - Use Karatsuba algorithm instead of the naive implementation
-  - Use Toom-Cook algorithm
-  - Use Schönhage–Strassen algorithm
 
 - Compute_square_root_digit_by_digit_method to handle both integers and floating point values This new version should return a large_floating_point instead of a string
 
