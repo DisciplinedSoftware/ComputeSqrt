@@ -364,13 +364,8 @@ namespace details {
 
 // ----------------------------------------------------------------------------
 
-[[nodiscard]] std::optional<large_unsigned_integer> large_unsigned_integer::from_string(const std::string& str_) {
-    assert(!str_.empty());
-    if (str_.empty()) {
-        return {};
-    }
-
-    const bool is_number_well_formed = std::all_of(std::begin(str_), std::end(str_), [](auto digit) {
+[[nodiscard]] bool is_number_well_formed(const std::string& str_) {
+    return std::ranges::all_of(str_, [](auto digit) {
         if (std::isdigit(digit)) {
             return true;
         }
@@ -383,10 +378,20 @@ namespace details {
             return true;
         }
 
-        return false; });
+        return false;
+    });
+}
 
-    assert(is_number_well_formed);
-    if (!is_number_well_formed) {
+[[nodiscard]] std::optional<large_unsigned_integer> large_unsigned_integer::from_string(const std::string& str_) {
+    assert(!str_.empty());
+    if (str_.empty()) {
+        return {};
+    }
+
+    const bool well_formed = is_number_well_formed(str_);
+
+    assert(well_formed);
+    if (!well_formed) {
         return {};
     }
 
