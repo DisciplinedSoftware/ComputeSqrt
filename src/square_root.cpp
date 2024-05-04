@@ -17,12 +17,12 @@ namespace details {
     }
 }
 
-[[nodiscard]] std::tuple<unsigned int, large_integer> compute_next_digit(const large_integer& current_remainder_, const large_integer& result_) {
+[[nodiscard]] std::tuple<unsigned int, large_unsigned_integer> compute_next_digit(const large_unsigned_integer& current_remainder_, const large_unsigned_integer& result_) {
     // find x * (20p + x) <= remainder*100+current
     const auto expanded_result = result_ * 20;
 
     unsigned int x{ 5 };
-    std::array<large_integer, 10> sum{ 0 };
+    std::array<large_unsigned_integer, 10> sum{ 0 };
     std::array<bool, 10> smaller_than_current_remainder{ true };
 
     // Use dichotomic search to find the next number
@@ -53,7 +53,7 @@ namespace details {
 
 [[nodiscard]] unsigned int square_root_digits_generator::operator()(auto current_) {
     // find x * (20p + x) <= remainder*100+current
-    const large_integer current_remainder = remainder * 100 + current_;
+    const large_unsigned_integer current_remainder = remainder * 100 + current_;
     const auto [x, sum] = compute_next_digit(current_remainder, result);
 
     assert(x < 10);
@@ -66,7 +66,7 @@ namespace details {
 // ----------------------------------------------------------------------------
 
 [[nodiscard]] bool square_root_digits_generator::has_next_digit() const {
-    return remainder != large_integer(0);
+    return remainder != large_unsigned_integer(0);
 }
 
 // ----------------------------------------------------------------------------

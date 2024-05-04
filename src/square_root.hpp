@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-#include "large_integer.hpp"
+#include "large_unsigned_integer.hpp"
 
 // ----------------------------------------------------------------------------
 // Arbitrarily long definition of sqrt(42)
@@ -291,8 +291,8 @@ public:
     [[nodiscard]] bool has_next_digit() const;
 
 private:
-    large_integer remainder{ 0 };
-    large_integer result{ 0 };
+    large_unsigned_integer remainder{ 0 };
+    large_unsigned_integer result{ 0 };
 };
 
 [[nodiscard]] std::vector<unsigned int> split_integer_into_groups_of_2_digits(std::integral auto value_) {

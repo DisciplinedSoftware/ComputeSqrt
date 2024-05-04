@@ -1,5 +1,5 @@
-#ifndef LARGE_INTEGER_HPP
-#define LARGE_INTEGER_HPP
+#ifndef LARGE_UNSIGNED_INTEGER_HPP
+#define LARGE_UNSIGNED_INTEGER_HPP
 
 #include <cstdint>
 #include <iostream>
@@ -11,7 +11,7 @@
 
 // ----------------------------------------------------------------------------
 // Large integer to handle infinitely large integer number
-class large_integer {
+class large_unsigned_integer {
 public:
     using underlying_type = std::uint32_t;
     using extended_type = std::uint64_t;
@@ -23,28 +23,23 @@ public:
     static constexpr const extended_type base = extended_type{ 1 } << nb_extended_type_bits;
 
     // Factory method to create a large integer from string
-    [[nodiscard]] static std::optional<large_integer> from_string(const std::string& str_);
+    [[nodiscard]] static std::optional<large_unsigned_integer> from_string(const std::string& str_);
 
     // Constructors
-    large_integer();
-    large_integer(std::integral auto value_);
-    large_integer(bool sign_, std::vector<underlying_type> data_);
+    large_unsigned_integer();
+    large_unsigned_integer(std::integral auto value_);
+    large_unsigned_integer(std::vector<underlying_type> data_);
 
     // Operators
-    [[nodiscard]] large_integer operator-() const;
-    [[nodiscard]] large_integer operator+(const large_integer& other_) const;
-    [[nodiscard]] large_integer operator-(const large_integer& other_) const;
-    [[nodiscard]] large_integer operator*(const large_integer& other_) const;
-    [[nodiscard]] std::strong_ordering operator<=>(const large_integer& other_) const;
-    [[nodiscard]] bool operator==(const large_integer& rhs_) const;
+    [[nodiscard]] large_unsigned_integer operator+(const large_unsigned_integer& other_) const;
+    [[nodiscard]] large_unsigned_integer operator-(const large_unsigned_integer& other_) const;
+    [[nodiscard]] large_unsigned_integer operator*(const large_unsigned_integer& other_) const;
+    [[nodiscard]] std::strong_ordering operator<=>(const large_unsigned_integer& other_) const;
+    [[nodiscard]] bool operator==(const large_unsigned_integer& rhs_) const;
 
-    [[nodiscard]] bool get_sign() const;
     [[nodiscard]] const collection_type& get_data() const;
 
 private:
-    // Handle the -0 case
-    void fix_minus_zeros();
-
     // Convert an integral value to raw data
     [[nodiscard]] static collection_type to_data_collection(std::integral auto value_);
 
@@ -53,18 +48,17 @@ private:
 
     // ------------------------------------------------------------------------
 
-    bool sign{};
     collection_type data;
 };
 
 // ----------------------------------------------------------------------------
 
-large_integer::large_integer(std::integral auto value_)
-    : large_integer(value_ < 0, to_data_collection(value_)) {}
+large_unsigned_integer::large_unsigned_integer(std::integral auto value_)
+    : large_unsigned_integer(to_data_collection(value_)) {}
 
 // ------------------------------------------------------------------------
 
-[[nodiscard]] large_integer::collection_type large_integer::to_data_collection(std::integral auto value_) {
+[[nodiscard]] large_unsigned_integer::collection_type large_unsigned_integer::to_data_collection(std::integral auto value_) {
     std::vector<underlying_type> data;
     if constexpr (std::signed_integral<decltype(value_)>) {
         value_ = std::abs(value_);
@@ -88,9 +82,9 @@ large_integer::large_integer(std::integral auto value_)
 // ----------------------------------------------------------------------------
 // Free functions
 
-[[nodiscard]] std::string to_string(const large_integer& value_);
+[[nodiscard]] std::string to_string(const large_unsigned_integer& value_);
 
-std::istream& operator>>(std::istream& stream_, large_integer& value_);
-std::ostream& operator<<(std::ostream& stream_, const large_integer& value_);
+std::istream& operator>>(std::istream& stream_, large_unsigned_integer& value_);
+std::ostream& operator<<(std::ostream& stream_, const large_unsigned_integer& value_);
 
-#endif // LARGE_INTEGER_HPP
+#endif // LARGE_UNSIGNED_INTEGER_HPP

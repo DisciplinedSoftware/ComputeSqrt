@@ -12,7 +12,6 @@
 
 #include <catch2/catch_session.hpp>
 
-#include "large_integer.hpp"
 #include "square_root.hpp"
 
 // ----------------------------------------------------------------------------
