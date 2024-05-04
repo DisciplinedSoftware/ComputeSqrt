@@ -1,8 +1,10 @@
-- Use std::to_chars (#include <charconv>)
+- Use dichotomic in square_root_digits_generator instead of a linear search
+
+- Maybe clean up the whole projet and keep only the infinite stream of digits
 
 - Use multithread algorithms for large integer
 
-- Maybe clean up the whole projet and keep only the infinite stream of digits
+- Use std::to_chars (#include <charconv>)
 
 - For multiply_large_unsigned_integer_sorted
   - Use Karatsuba algorithm instead of the naive implementation
