@@ -1,7 +1,5 @@
 #include "square_root.hpp"
 
-
-
 namespace details {
 
 [[nodiscard]] std::tuple<unsigned int, large_integer> compute_next_digit(const large_integer& current_remainder_, const large_integer& result_) {
@@ -21,6 +19,8 @@ namespace details {
     return { x, sum };
 }
 
+// ----------------------------------------------------------------------------
+
 [[nodiscard]] unsigned int square_root_digits_generator::operator()(auto current_) {
     // find x * (20p + x) <= remainder*100+current
     const large_integer current_remainder = remainder * 100 + current_;
@@ -33,9 +33,13 @@ namespace details {
     return x;
 }
 
+// ----------------------------------------------------------------------------
+
 [[nodiscard]] bool square_root_digits_generator::has_next_digit() const {
     return remainder != large_integer(0);
 }
+
+// ----------------------------------------------------------------------------
 
 [[nodiscard]] std::string compute_fractional_part_of_square_root(unsigned int precision_, square_root_digits_generator& generator_) {
     std::string fractional_part;
@@ -50,6 +54,8 @@ namespace details {
 
     return fractional_part;
 }
+
+// ----------------------------------------------------------------------------
 
 [[nodiscard]] std::tuple<std::string, bool> propagate_carry(std::string&& number_, bool carry_) {
     for (auto& digit : number_ | std::views::reverse) {
@@ -68,6 +74,8 @@ namespace details {
     return { number_, carry_ };
 }
 
+// ----------------------------------------------------------------------------
+
 [[nodiscard]] std::tuple<std::string, std::string> round_last_digit(std::string&& integral_part_, std::string&& fractional_part_, unsigned int rounding_digit_) {
     const double rounded_last_digit = std::round((static_cast<double>(rounding_digit_) / 10.0));
 
@@ -82,12 +90,16 @@ namespace details {
     return { integral_part_, fractional_part_ };
 }
 
+// ----------------------------------------------------------------------------
+
 [[nodiscard]] std::string trim_lower_zeros(std::string&& fractional_part_) {
     auto last = std::ranges::find_if_not(fractional_part_ | std::views::reverse, [](auto digit) {return digit == '0';});
     fractional_part_.erase(last.base(), std::end(fractional_part_));
 
     return fractional_part_;
 }
+
+// ----------------------------------------------------------------------------
 
 void compute_fractional_part_of_square_root(std::ostream& stream_, square_root_digits_generator& generator_, std::stop_token stop_) {
     while (!stop_.stop_requested() && generator_.has_next_digit()) {
