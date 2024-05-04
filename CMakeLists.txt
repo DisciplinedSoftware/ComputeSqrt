@@ -16,7 +16,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Add your source files
 set(SOURCES 
     src/main.cpp
+    src/large_integer.hpp
     src/large_integer.cpp
+    src/square_root.hpp
     src/square_root.cpp
     src/test/square_root_test.cpp
     src/test/large_integer_test.cpp
