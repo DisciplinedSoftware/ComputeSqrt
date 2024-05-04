@@ -3,20 +3,46 @@
 namespace details {
 
 [[nodiscard]] std::tuple<unsigned int, large_integer> compute_next_digit(const large_integer& current_remainder_, const large_integer& result_) {
-    unsigned int x{ 0 };
-    large_integer sum{ 0 };
-    large_integer next_sum{ 0 };
+    // find x * (20p + x) <= remainder*100+current
     const auto expanded_result = result_ * 20;
-    while (next_sum <= current_remainder_) {
-        sum = next_sum;
-        ++x;
-        next_sum = (expanded_result + x) * x;
+
+    unsigned int x{ 5 };
+    std::array<large_integer, 10> sum{ 0 };
+    std::array<bool, 10> smaller_than_current_remainder{ true };
+
+    // Use dichotomic search to find the next number
+    //      5
+    //    3   7
+    //   1 4 6 8
+    //  0 2     9
+    constexpr const std::array<unsigned int, 10> next_value_if_larger{ 0, 0, 2, 1, 4, 3, 6, 6, 8, 9 };
+    constexpr const std::array<unsigned int, 10> next_value_if_smaller{ 0, 2, 2, 4, 4, 7, 6, 8, 9, 9 };
+
+    while (true) {
+        if (x == 0) {
+            return { x, sum[x] };
+        }
+
+        sum[x] = (expanded_result + x) * x;
+        smaller_than_current_remainder[x] = sum[x] <= current_remainder_;
+
+        auto next_x = x;
+        if (smaller_than_current_remainder[x]) {
+            next_x = next_value_if_smaller[x];
+        } else {
+            next_x = next_value_if_larger[x];
+        }
+
+        if (x == next_x) {
+            if (smaller_than_current_remainder[x]) {
+                return { x, sum[x] };
+            } else {
+                return { x - 1, sum[x - 1] };
+            }
+        }
+
+        x = next_x;
     }
-
-    // Went one step too far
-    --x;
-
-    return { x, sum };
 }
 
 // ----------------------------------------------------------------------------
