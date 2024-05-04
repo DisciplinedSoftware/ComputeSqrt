@@ -43,9 +43,6 @@ private:
     // Convert an integral value to raw data
     [[nodiscard]] static collection_type to_data_collection(std::unsigned_integral auto value_);
 
-    // Helper class to avoid data copies
-    class data_ref;
-
     // ------------------------------------------------------------------------
 
     collection_type data;

@@ -199,76 +199,6 @@ constexpr const auto base = large_unsigned_integer::base;
 
 } // Anonymous namespace
 
-// ------------------------------------------------------------------------
-// Helper class that avoid data copies
-class large_unsigned_integer::data_ref {
-public:
-    // Large integer constructor
-    data_ref(const large_unsigned_integer& other_);
-
-    // Raw data constructor
-    data_ref(const std::vector<underlying_type>& data_);
-
-    // Operators
-    [[nodiscard]] large_unsigned_integer operator+(const data_ref& other_) const;
-    [[nodiscard]] large_unsigned_integer operator-(const data_ref& other_) const;
-    [[nodiscard]] large_unsigned_integer operator*(const data_ref& other_) const;
-    [[nodiscard]] std::strong_ordering operator<=>(const data_ref& other_) const;
-
-private:
-    std::reference_wrapper<const collection_type> data;
-};
-
-// ----------------------------------------------------------------------------
-
-large_unsigned_integer::data_ref::data_ref(const large_unsigned_integer& other_)
-    : data_ref(std::cref(other_.data)) {}
-
-// ----------------------------------------------------------------------------
-
-large_unsigned_integer::data_ref::data_ref(const std::vector<underlying_type>& data_)
-    : data(std::cref(data_)) {}
-
-// --------------------------------------------------------------------
-
-[[nodiscard]] large_unsigned_integer large_unsigned_integer::data_ref::operator+(const data_ref& other_) const {
-    // Enforce lhs to be larger than rhs
-    if (*this < other_) {
-        return other_ + *this;
-    }
-
-    return add_large_unsigned_integer_sorted(data.get(), other_.data.get());
-}
-
-// ----------------------------------------------------------------------------
-
-[[nodiscard]] large_unsigned_integer large_unsigned_integer::data_ref::operator-(const data_ref& other_) const {
-    assert(*this >= other_);
-
-    if (*this < other_) {
-        return {};
-    }
-
-    return subtract_large_unsigned_integer_sorted(data.get(), other_.data.get());
-}
-
-// ----------------------------------------------------------------------------
-
-[[nodiscard]] large_unsigned_integer large_unsigned_integer::data_ref::operator*(const data_ref& other_) const {
-    // Enforce lhs to be larger than rhs
-    if (*this < other_) {
-        return other_ * *this;
-    }
-
-    return multiply_large_unsigned_integer_sorted(data.get(), other_.data.get());
-}
-
-// ----------------------------------------------------------------------------
-
-[[nodiscard]] std::strong_ordering large_unsigned_integer::data_ref::operator<=>(const data_ref& other_) const {
-    return compare_large_unsigned_integer(data, other_.data);
-}
-
 // ----------------------------------------------------------------------------
 
 large_unsigned_integer::large_unsigned_integer() : large_unsigned_integer(0u) {}
@@ -278,34 +208,50 @@ large_unsigned_integer::large_unsigned_integer() : large_unsigned_integer(0u) {}
 large_unsigned_integer::large_unsigned_integer(std::vector<underlying_type> data_)
     : data(cleanup(std::move(data_))) {}
 
-// ------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 [[nodiscard]] large_unsigned_integer large_unsigned_integer::operator+(const large_unsigned_integer& other_) const {
-    return data_ref(*this) + data_ref(other_);
+    // Enforce lhs to be larger than rhs
+    if (*this < other_) {
+        return other_ + (*this);
+    }
+
+    return add_large_unsigned_integer_sorted(data, other_.data);
 }
 
-// ------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 [[nodiscard]] large_unsigned_integer large_unsigned_integer::operator-(const large_unsigned_integer& other_) const {
-    return data_ref(*this) - data_ref(other_);
+    assert(*this >= other_);    // Enforce a positive result
+
+    if (*this < other_) {
+        return {};
+    }
+
+    return subtract_large_unsigned_integer_sorted(data, other_.data);
 }
 
-// ------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 [[nodiscard]] large_unsigned_integer large_unsigned_integer::operator*(const large_unsigned_integer& other_) const {
-    return data_ref(*this) * data_ref(other_);
+    // Enforce lhs to be larger than rhs
+    if (*this < other_) {
+        return other_ * (*this);
+    }
+
+    return multiply_large_unsigned_integer_sorted(data, other_.data);
 }
 
 // ----------------------------------------------------------------------------
 
 [[nodiscard]] std::strong_ordering large_unsigned_integer::operator<=>(const large_unsigned_integer& other_) const {
-    return data_ref(*this) <=> data_ref(other_);
+    return compare_large_unsigned_integer(data, other_.data);
 }
 
 // ------------------------------------------------------------------------
 
-[[nodiscard]] bool large_unsigned_integer::operator==(const large_unsigned_integer& rhs_) const {
-    return (*this <=> rhs_) == std::strong_ordering::equal;
+[[nodiscard]] bool large_unsigned_integer::operator==(const large_unsigned_integer& other_) const {
+    return this->data == other_.data;
 }
 
 // ------------------------------------------------------------------------
@@ -318,49 +264,45 @@ large_unsigned_integer::large_unsigned_integer(std::vector<underlying_type> data
 
 namespace details {
 
+using extended_type = large_unsigned_integer::extended_type;
+
 // A function to perform division of large numbers
-[[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number_, large_unsigned_integer::extended_type divisor_) {
+[[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number_, extended_type divisor_) {
     // As result can be very large store it in string
-    std::string ans;
+    std::string result;
 
     // Find prefix of number that is larger than divisor.
     size_t idx = 0;
-    large_unsigned_integer::extended_type temp = number_[idx] - '0';
+    extended_type temp = number_[idx] - '0';
     while (idx < (number_.size() - 1) && temp < divisor_) {
         temp = temp * 10 + (number_[++idx] - '0');
     }
 
-    // Repeatedly divide divisor with temp. After
-    // every division, update temp to include one
-    // more digit.
     while ((number_.size() - 1) > idx) {
         // Store result in answer i.e. temp / divisor
-        ans += static_cast<char>(temp / divisor_) + '0';
+        result += static_cast<std::string::value_type>(temp / divisor_) + '0';
 
         // Take next digit of number_
         temp = (temp % divisor_) * 10 + number_[++idx] - '0';
     }
 
-    ans += static_cast<char>(temp / divisor_) + '0';
+    result += static_cast<std::string::value_type>(temp / divisor_) + '0';
 
-    // else return ans
-    return ans;
+    return result;
 }
 
 // ----------------------------------------------------------------------------
 
-[[nodiscard]] large_unsigned_integer::extended_type modulo_integer_as_string_by_integer(const std::string& number_, large_unsigned_integer::extended_type divisor_) {
-    large_unsigned_integer::extended_type res = 0;
+[[nodiscard]] extended_type modulo_integer_as_string_by_integer(const std::string& number_, extended_type divisor_) {
+    extended_type result = 0;
 
-    // One by one process all digits of 'number_'
+    // Sequencially apply modulo
     for (const auto digit : number_) {
-        res = (res * 10 + (digit - '0')) % divisor_;
+        result = (result * 10 + (digit - '0')) % divisor_;
     }
 
-    return res;
+    return result;
 }
-
-} // namespace details
 
 // ----------------------------------------------------------------------------
 
@@ -382,13 +324,17 @@ namespace details {
     });
 }
 
+} // namespace details
+
+// ----------------------------------------------------------------------------
+
 [[nodiscard]] std::optional<large_unsigned_integer> large_unsigned_integer::from_string(const std::string& str_) {
     assert(!str_.empty());
     if (str_.empty()) {
         return {};
     }
 
-    const bool well_formed = is_number_well_formed(str_);
+    const bool well_formed = details::is_number_well_formed(str_);
 
     assert(well_formed);
     if (!well_formed) {
