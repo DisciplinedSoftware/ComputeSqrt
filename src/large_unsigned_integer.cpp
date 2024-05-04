@@ -55,11 +55,8 @@ constexpr const auto base = large_unsigned_integer::base;
 // ------------------------------------------------------------------------
 // Helper function that trims the usless upper zeros
 [[nodiscard]] collection_type trim_upper_zeros(collection_type&& data_) {
-    size_t index = data_.size();
-    while (index > 1 && data_[--index] == 0) {
-        data_.pop_back();
-    }
-
+    auto it = std::ranges::find_if(data_ | std::views::reverse, [](auto value_) { return value_ != 0; });
+    data_.erase(it.base(), data_.end());
     return data_;
 }
 
@@ -113,6 +110,23 @@ constexpr const auto base = large_unsigned_integer::base;
 }
 
 // ------------------------------------------------------------------------
+
+std::tuple<signed_extended_type, bool> subtract_one_digit(signed_extended_type lhs_value_, signed_extended_type rhs_value_, bool carry_) {
+    if (carry_) {
+        --lhs_value_;
+    }
+
+    if (lhs_value_ < rhs_value_) {
+        lhs_value_ += base;
+        carry_ = true;
+    } else {
+        carry_ = false;
+    }
+
+    return { lhs_value_ - rhs_value_, carry_ };
+};
+
+// ------------------------------------------------------------------------
 // Helper function that subtract 2 sorted large unsigned intergers
 [[nodiscard]] collection_type subtract_large_unsigned_integer_sorted(const collection_type& lhs_, const collection_type& rhs_) {
     assert(sorted(lhs_, rhs_));
@@ -124,44 +138,30 @@ constexpr const auto base = large_unsigned_integer::base;
     bool carry = false;
     const size_t min_size = rhs_.size();
     size_t index = 0;
-    for (; index < min_size; ++index) {
+    std::generate_n(std::back_inserter(result_data), min_size, [&carry, &index, &lhs_, &rhs_] {
         const signed_extended_type lhs_value = lhs_[index];
         const signed_extended_type rhs_value = rhs_[index];
+        ++index;
 
-        signed_extended_type value = lhs_value;
-        if (carry) {
-            --value;
-        }
+        const auto [difference, new_carry] = subtract_one_digit(lhs_value, rhs_value, carry);
+        carry = new_carry;
 
-        if (value < rhs_value) {
-            value += base;
-            carry = true;
-        } else {
-            carry = false;
-        }
-
-        extended_type diff = value - rhs_value;
-        assert(diff <= std::numeric_limits<underlying_type>::max());
-        result_data.emplace_back(static_cast<underlying_type>(diff));
-    }
+        assert(difference >= 0);
+        assert(difference <= std::numeric_limits<underlying_type>::max());
+        return static_cast<underlying_type>(difference);
+    });
 
     // Extend the carry to the rest of lhs
     for (; index < lhs_.size(); ++index) {
-        const signed_extended_type lhs = lhs_[index];
-        signed_extended_type value = lhs;
-        if (carry) {
-            --value;
-        }
+        const signed_extended_type lhs_value = lhs_[index];
+        const signed_extended_type rhs_value = 0;
 
-        if (value < 0) {
-            value += base;
-            carry = true;
-        } else {
-            carry = false;
-        }
+        const auto [difference, new_carry] = subtract_one_digit(lhs_value, rhs_value, carry);
+        carry = new_carry;
 
-        assert(value <= std::numeric_limits<underlying_type>::max());
-        result_data.emplace_back(static_cast<underlying_type>(value));
+        assert(difference >= 0);
+        assert(difference <= std::numeric_limits<underlying_type>::max());
+        result_data.emplace_back(static_cast<underlying_type>(difference));
     }
 
     return cleanup(std::move(result_data));
@@ -183,7 +183,7 @@ constexpr const auto base = large_unsigned_integer::base;
             const extended_type rhs_value = rhs_[rhs_index];
             const extended_type old_result = result_data[result_index];
 
-            extended_type value = lhs_value * rhs_value + overflow + old_result;
+            const extended_type value = lhs_value * rhs_value + overflow + old_result;
             result_data[result_index] = static_cast<underlying_type>(value);
 
             overflow = value >> nb_extended_type_bits;
@@ -266,7 +266,7 @@ namespace details {
 
 using extended_type = large_unsigned_integer::extended_type;
 
-// A function to perform division of large numbers
+// Perform division of large numbers
 [[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number_, extended_type divisor_) {
     // As result can be very large store it in string
     std::string result;
