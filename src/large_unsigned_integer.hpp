@@ -35,7 +35,7 @@ public:
     [[nodiscard]] large_unsigned_integer operator-(const large_unsigned_integer& other_) const;
     [[nodiscard]] large_unsigned_integer operator*(const large_unsigned_integer& other_) const;
     [[nodiscard]] std::strong_ordering operator<=>(const large_unsigned_integer& other_) const;
-    [[nodiscard]] bool operator==(const large_unsigned_integer& rhs_) const;
+    [[nodiscard]] bool operator==(const large_unsigned_integer& other_) const;
 
     [[nodiscard]] const collection_type& get_data() const;
 
@@ -59,20 +59,20 @@ large_unsigned_integer::large_unsigned_integer(std::unsigned_integral auto value
 // ------------------------------------------------------------------------
 
 [[nodiscard]] large_unsigned_integer::collection_type large_unsigned_integer::to_data_collection(std::unsigned_integral auto value_) {
-    if constexpr (sizeof(decltype(value_)) <= sizeof(underlying_type)) {
-        return { value_ };
-    } else {
-        std::vector<underlying_type> data;
+    std::vector<underlying_type> data;
 
-        while (value_ > 0) {
+    if constexpr (sizeof(decltype(value_)) > sizeof(underlying_type)) {
+        while (value_ > std::numeric_limits<underlying_type>::max()) {
             // Keep only the lower part that can be stored in underlying_type
             data.emplace_back(static_cast<underlying_type>(value_));
             // Compute the overflow that cannot be stored
             value_ >>= nb_extended_type_bits;
         }
-
-        return data;
     }
+
+    data.emplace_back(static_cast<underlying_type>(value_));
+
+    return data;
 }
 
 // ----------------------------------------------------------------------------

@@ -7,6 +7,12 @@
 TEST_CASE("large_unsigned_integer") {
     using namespace std::string_literals;
 
+    SECTION("Construction") {
+        CHECK(large_unsigned_integer() == 0UL);
+        CHECK(large_unsigned_integer(0u) == 0UL);
+        CHECK(large_unsigned_integer::from_string("0"s).value() == 0UL);
+    }
+
     SECTION("Equality operator") {
         CHECK(large_unsigned_integer(1u) == 1u);
         CHECK(large_unsigned_integer(123456789012UL) == 123456789012UL);
@@ -23,7 +29,7 @@ TEST_CASE("large_unsigned_integer") {
 
     SECTION("Addition") {
         CHECK(large_unsigned_integer(123456789012UL) + large_unsigned_integer(123456789012UL) == 246913578024UL);
-        CHECK(large_unsigned_integer::from_string("12345678901234567890").value() + large_unsigned_integer::from_string("9876543211234567890").value() == large_unsigned_integer::from_string("0").value());
+        CHECK(large_unsigned_integer::from_string("12345678901234567890").value() + large_unsigned_integer::from_string("9876543211234567890").value() == large_unsigned_integer::from_string("22222222112469135780").value());
     }
 
     SECTION("Subtraction") {
