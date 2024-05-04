@@ -2,6 +2,7 @@
   - Use Karatsuba algorithm instead of the naive implementation
   - Use Toom-Cook algorithm
   - Use Schönhage–Strassen algorithm
+  This is useless as all multiplications are done with one large and one small number
 
 - Use coroutine to generate digits
 
@@ -12,8 +13,6 @@
 - Use std::to_chars (#include <charconv>)
 
 - Compute_square_root_digit_by_digit_method to handle both integers and floating point values This new version should return a large_floating_point instead of a string
-
-- Move compute_next_digit lambda to a function and return a structure that includes the digit, the remainder and the result
 
 - Add computation time around each computing method
 
