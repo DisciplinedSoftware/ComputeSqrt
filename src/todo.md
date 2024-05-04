@@ -6,7 +6,7 @@
   - Use Schönhage–Strassen algorithm
   This is useless as all multiplications are done with one large and one small number
 
-- Use coroutine to generate digits
+- Use coroutine to generate digits which will allow a separation of the generation and the streaming and allow a separate thread to generate the digits
 
 - Maybe clean up the whole projet and keep only the infinite stream of digits
 
