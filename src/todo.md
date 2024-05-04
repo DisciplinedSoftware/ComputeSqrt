@@ -1,3 +1,5 @@
+- Use std::reduce instead of loops if possible with the help of a structure (overflow, data)
+
 - For multiply_large_unsigned_integer_sorted
   - Use Karatsuba algorithm instead of the naive implementation
   - Use Toom-Cook algorithm
@@ -8,16 +10,13 @@
 
 - Maybe clean up the whole projet and keep only the infinite stream of digits
 
-- Use multithread algorithms for large integer
+- Multi-thread large_integer operations and enable it using CRTP or an executor
 
 - Use std::to_chars (#include <charconv>)
 
 - Compute_square_root_digit_by_digit_method to handle both integers and floating point values This new version should return a large_floating_point instead of a string
 
 - Add computation time around each computing method
-
-- Use std::reduce instead of loops if possible with the help of a structure (overflow, data)
-- Multi-thread large_integer operations and enable it using CRTP or an executor
 
 - Implement different initial estimate methods
     // (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Approximations_that_depend_on_the_floating_point_representation)
