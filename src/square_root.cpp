@@ -4,14 +4,12 @@
 
 namespace details {
 
-[[nodiscard]] unsigned int square_root_digits_generator::operator()(auto current_) {
-    // find x * (20p + x) <= remainder*100+current
-    const large_integer current_remainder = remainder * 100 + current_;
+[[nodiscard]] std::tuple<unsigned int, large_integer> compute_next_digit(const large_integer& current_remainder_, const large_integer& result_) {
     unsigned int x{ 0 };
     large_integer sum{ 0 };
     large_integer next_sum{ 0 };
-    const auto expanded_result = result * 20;
-    while (next_sum <= current_remainder) {
+    const auto expanded_result = result_ * 20;
+    while (next_sum <= current_remainder_) {
         sum = next_sum;
         ++x;
         next_sum = (expanded_result + x) * x;
@@ -19,6 +17,14 @@ namespace details {
 
     // Went one step too far
     --x;
+
+    return { x, sum };
+}
+
+[[nodiscard]] unsigned int square_root_digits_generator::operator()(auto current_) {
+    // find x * (20p + x) <= remainder*100+current
+    const large_integer current_remainder = remainder * 100 + current_;
+    const auto [x, sum] = compute_next_digit(current_remainder, result);
 
     assert(x < 10);
     result = result * 10 + x;
