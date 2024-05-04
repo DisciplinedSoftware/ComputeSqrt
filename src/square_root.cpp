@@ -2,6 +2,21 @@
 
 namespace details {
 
+[[nodiscard]] unsigned int get_next_digit_to_evaluate(unsigned int x_, bool smaller_than_current_remainder_) {
+    //      5
+    //    3   7
+    //   1 4 6 8
+    //  0 2     9
+    constexpr const std::array<unsigned int, 10> next_value_if_larger{ 0, 0, 2, 1, 4, 3, 6, 6, 8, 9 };
+    constexpr const std::array<unsigned int, 10> next_value_if_smaller{ 0, 2, 2, 4, 4, 7, 6, 8, 9, 9 };
+
+    if (smaller_than_current_remainder_) {
+        return next_value_if_smaller[x_];
+    } else {
+        return next_value_if_larger[x_];
+    }
+}
+
 [[nodiscard]] std::tuple<unsigned int, large_integer> compute_next_digit(const large_integer& current_remainder_, const large_integer& result_) {
     // find x * (20p + x) <= remainder*100+current
     const auto expanded_result = result_ * 20;
@@ -11,14 +26,8 @@ namespace details {
     std::array<bool, 10> smaller_than_current_remainder{ true };
 
     // Use dichotomic search to find the next number
-    //      5
-    //    3   7
-    //   1 4 6 8
-    //  0 2     9
-    constexpr const std::array<unsigned int, 10> next_value_if_larger{ 0, 0, 2, 1, 4, 3, 6, 6, 8, 9 };
-    constexpr const std::array<unsigned int, 10> next_value_if_smaller{ 0, 2, 2, 4, 4, 7, 6, 8, 9, 9 };
-
     while (true) {
+        // Early optimization for 0 to avoid computing the sum and the comparison as it's always 0 and smaller
         if (x == 0) {
             return { x, sum[x] };
         }
@@ -26,12 +35,7 @@ namespace details {
         sum[x] = (expanded_result + x) * x;
         smaller_than_current_remainder[x] = sum[x] <= current_remainder_;
 
-        auto next_x = x;
-        if (smaller_than_current_remainder[x]) {
-            next_x = next_value_if_smaller[x];
-        } else {
-            next_x = next_value_if_larger[x];
-        }
+        const auto next_x = get_next_digit_to_evaluate(x, smaller_than_current_remainder[x]);
 
         if (x == next_x) {
             if (smaller_than_current_remainder[x]) {
