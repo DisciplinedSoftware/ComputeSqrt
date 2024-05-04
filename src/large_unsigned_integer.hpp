@@ -27,7 +27,7 @@ public:
 
     // Constructors
     large_unsigned_integer();
-    large_unsigned_integer(std::integral auto value_);
+    large_unsigned_integer(std::unsigned_integral auto value_);
     large_unsigned_integer(std::vector<underlying_type> data_);
 
     // Operators
@@ -41,7 +41,7 @@ public:
 
 private:
     // Convert an integral value to raw data
-    [[nodiscard]] static collection_type to_data_collection(std::integral auto value_);
+    [[nodiscard]] static collection_type to_data_collection(std::unsigned_integral auto value_);
 
     // Helper class to avoid data copies
     class data_ref;
@@ -53,30 +53,26 @@ private:
 
 // ----------------------------------------------------------------------------
 
-large_unsigned_integer::large_unsigned_integer(std::integral auto value_)
+large_unsigned_integer::large_unsigned_integer(std::unsigned_integral auto value_)
     : large_unsigned_integer(to_data_collection(value_)) {}
 
 // ------------------------------------------------------------------------
 
-[[nodiscard]] large_unsigned_integer::collection_type large_unsigned_integer::to_data_collection(std::integral auto value_) {
-    std::vector<underlying_type> data;
-    if constexpr (std::signed_integral<decltype(value_)>) {
-        value_ = std::abs(value_);
-    }
+[[nodiscard]] large_unsigned_integer::collection_type large_unsigned_integer::to_data_collection(std::unsigned_integral auto value_) {
+    if constexpr (sizeof(decltype(value_)) <= sizeof(underlying_type)) {
+        return { value_ };
+    } else {
+        std::vector<underlying_type> data;
 
-    if (sizeof(decltype(value_)) > sizeof(underlying_type)) {
-        auto max_value = std::numeric_limits<underlying_type>::max();
-        while (value_ > max_value) {
+        while (value_ > 0) {
             // Keep only the lower part that can be stored in underlying_type
             data.emplace_back(static_cast<underlying_type>(value_));
             // Compute the overflow that cannot be stored
             value_ >>= nb_extended_type_bits;
         }
+
+        return data;
     }
-
-    data.emplace_back(static_cast<underlying_type>(value_));
-
-    return data;
 }
 
 // ----------------------------------------------------------------------------

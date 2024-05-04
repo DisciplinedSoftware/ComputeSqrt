@@ -291,8 +291,8 @@ public:
     [[nodiscard]] bool has_next_digit() const;
 
 private:
-    large_unsigned_integer remainder{ 0 };
-    large_unsigned_integer result{ 0 };
+    large_unsigned_integer remainder{ 0u };
+    large_unsigned_integer result{ 0u };
 };
 
 [[nodiscard]] std::vector<unsigned int> split_integer_into_groups_of_2_digits(std::integral auto value_) {

@@ -271,7 +271,7 @@ large_unsigned_integer::data_ref::data_ref(const std::vector<underlying_type>& d
 
 // ----------------------------------------------------------------------------
 
-large_unsigned_integer::large_unsigned_integer() : large_unsigned_integer(0) {}
+large_unsigned_integer::large_unsigned_integer() : large_unsigned_integer(0u) {}
 
 // ----------------------------------------------------------------------------
 
@@ -497,7 +497,7 @@ std::istream& operator>>(std::istream& stream_, large_unsigned_integer& value_) 
 
     auto result = large_unsigned_integer::from_string(number);
     assert(result.has_value());
-    value_ = std::move(result).value_or(0);
+    value_ = std::move(result).value_or(0u);
 
     return stream_;
 }
