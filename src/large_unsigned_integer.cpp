@@ -268,19 +268,24 @@ using extended_type = large_unsigned_integer::extended_type;
 
 // Perform division of large number represented as a string
 [[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number_, extended_type divisor_) {
+    // As result can be very large store it in string
     std::string result;
 
     // Find prefix of number that is larger than divisor.
-    auto it = std::ranges::find_if(number_, [divisor_](char c) { return (c - '0') >= divisor_; });
-
-    while (std::ranges::distance(it, number_.end()) > 1) {
-        result += static_cast<std::string::value_type>((it->value() - '0') / divisor_) + '0';
-
-        // Take next digit of number_
-        it = std::ranges::find_if(it, number_.end(), [divisor_](char c) { return (c - '0') >= divisor_; });
+    size_t idx = 0;
+    extended_type temp = number_[idx] - '0';
+    while (idx < (number_.size() - 1) && temp < divisor_) {
+        temp = temp * 10 + (number_[++idx] - '0');
     }
 
-    result += static_cast<std::string::value_type>((it->value() - '0') / divisor_) + '0';
+    while ((number_.size() - 1) > idx) {
+        result += static_cast<std::string::value_type>(temp / divisor_) + '0';
+
+        // Take next digit of number_
+        temp = (temp % divisor_) * 10 + number_[++idx] - '0';
+    }
+
+    result += static_cast<std::string::value_type>(temp / divisor_) + '0';
 
     return result;
 }
