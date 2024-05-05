@@ -1,11 +1,12 @@
 #include <coroutine>
 #include <exception>
+#include <utility>
 
 template<typename T>
 class generator {
 public:
     class promise_type;
-    using handle_type = std::coroutineutine_handle<promise_type>;
+    using handle_type = std::coroutine_handle<promise_type>;
 
     generator(handle_type handle_)
         : coroutine(handle_) {}
