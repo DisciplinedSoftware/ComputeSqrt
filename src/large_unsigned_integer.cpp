@@ -23,7 +23,7 @@ constexpr const auto base = large_unsigned_integer::base;
             : std::strong_ordering::greater;
     }
 
-#if __cpp_lib_ranges_zip >= 202110L
+#if defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
     for (const auto& [lhs, rhs] :
         std::views::zip(lhs_, rhs_) | std::views::reverse) {
         if (lhs != rhs) {
@@ -396,7 +396,7 @@ namespace details {
     sum.reserve(lhs_.size() + 1);
 
     // Add rhs digits
-#if __cpp_lib_ranges_zip >= 202110L
+#if defined(__cpp_lib_ranges_zip) && __cpp_lib_ranges_zip >= 202110L
     for (const auto [lhs_digit, rhs_digit] : std::views::zip(lhs_, rhs_)) {
 #else
     for (size_t index = 0; index < rhs_.size(); ++index) {
@@ -404,7 +404,7 @@ namespace details {
         const auto rhs_digit = to_value(rhs_[index]);
 #endif
         std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
-}
+    }
 
     // Propagate carry to lhs
     for (const auto lhs_char : lhs_ | std::views::drop(rhs_.size())) {
