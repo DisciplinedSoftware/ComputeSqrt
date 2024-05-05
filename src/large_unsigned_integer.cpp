@@ -277,19 +277,19 @@ using extended_type = large_unsigned_integer::extended_type;
         return sum >= divisor_;
     });
 
+    const auto next_char = static_cast<std::string::value_type>(sum / divisor_ + '0');
+    std::string result({ next_char });
+    result.reserve(number_.size());
+
     if (it == std::end(number_)) {
-        return std::to_string(sum / divisor_);
+        return result;
     }
 
-    std::string result;
-    result.reserve(number_.size());
     std::ranges::transform(++it, std::end(number_), std::back_inserter(result), [&sum, divisor_](char c) {
-        const auto next_char = static_cast<std::string::value_type>(sum / divisor_) + '0';
         sum = (sum % divisor_) * 10 + (c - '0');
+        const auto next_char = static_cast<std::string::value_type>(sum / divisor_ + '0');
         return next_char;
     });
-
-    result += static_cast<std::string::value_type>(sum / divisor_) + '0';
 
     return result;
 }
