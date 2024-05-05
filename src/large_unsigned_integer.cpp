@@ -402,8 +402,8 @@ namespace details {
     }
 
     // Propagate carry to lhs
-    for (size_t index = rhs_.size(); index < lhs_.size(); ++index) {
-        const auto lhs_digit = to_value(lhs_[index]);
+    for (auto lhs_char : lhs_ | std::views::drop(rhs_.size())) {
+        const auto lhs_digit = to_value(lhs_char);
         constexpr const auto rhs_digit = 0;
 
         std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
