@@ -394,15 +394,18 @@ namespace details {
     sum.reserve(lhs_.size() + 1);
 
     // Add rhs digits
+#if __cpp_lib_ranges_zip >= 202110L
+    for (const auto [lhs_digit, rhs_digit] : std::views::zip(lhs_, rhs_)) {
+#else
     for (size_t index = 0; index < rhs_.size(); ++index) {
         const auto lhs_digit = to_value(lhs_[index]);
         const auto rhs_digit = to_value(rhs_[index]);
-
+#endif
         std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
     }
 
     // Propagate carry to lhs
-    for (auto lhs_char : lhs_ | std::views::drop(rhs_.size())) {
+    for (const auto lhs_char : lhs_ | std::views::drop(rhs_.size())) {
         const auto lhs_digit = to_value(lhs_char);
         constexpr const auto rhs_digit = 0;
 
@@ -425,7 +428,7 @@ namespace details {
 // ----------------------------------------------------------------------------
 
 // Function to multiply a string representing a large integer by an integer
-[[nodiscard]] std::string multiply_integer_as_string_by_integer(const std::string& num_, large_unsigned_integer::extended_type factor_) {
+[[nodiscard]] std::string multiply_integer_as_string_by_integer(const std::string & num_, large_unsigned_integer::extended_type factor_) {
     std::string result;
     large_unsigned_integer::extended_type carry = 0;
     for (auto digit_str : std::views::reverse(num_)) {
@@ -445,7 +448,7 @@ namespace details {
 // ----------------------------------------------------------------------------
 
 // Recompose data, where values are represented as data[i]*base^i, into a base 10 string
-[[nodiscard]] std::string recompose_data_as_base_10_string(const large_unsigned_integer::collection_type& data_, large_unsigned_integer::extended_type base_) {
+[[nodiscard]] std::string recompose_data_as_base_10_string(const large_unsigned_integer::collection_type & data_, large_unsigned_integer::extended_type base_) {
     std::string result = "0";
     unsigned int power = 0;
     for (auto single_data : data_) {
