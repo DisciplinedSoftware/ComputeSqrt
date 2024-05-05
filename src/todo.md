@@ -6,11 +6,13 @@
   - Use Schönhage–Strassen algorithm
   This is useless as all multiplications are done with one large and one small number
 
-- Use coroutine to generate digits which will allow a separation of the generation and the streaming and allow a separate thread to generate the digits
+- Use coroutine to generate digits which will allow a separation of the generation and the streaming
+- use a multithread queue to allow async generation where the streaming doesn't impact on the generation
 
 - Maybe clean up the whole projet and keep only the infinite stream of digits
 
 - Multi-thread large_integer operations and enable it using CRTP or an executor
+  - This could be applied to the digit generator where we look for the highest number that is not larger than the remainder
 
 - Use std::to_chars (#include <charconv>)
 
