@@ -381,6 +381,8 @@ namespace details {
     return { sum_, carry_ };
 }
 
+// ----------------------------------------------------------------------------
+
 // Function to add two strings representing large integers
 [[nodiscard]] std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
     assert(!lhs_.empty() && !rhs_.empty());
@@ -402,7 +404,7 @@ namespace details {
         const auto rhs_digit = to_value(rhs_[index]);
 #endif
         std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
-    }
+}
 
     // Propagate carry to lhs
     for (const auto lhs_char : lhs_ | std::views::drop(rhs_.size())) {
