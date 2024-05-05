@@ -266,6 +266,20 @@ namespace details {
 
 using extended_type = large_unsigned_integer::extended_type;
 
+// ----------------------------------------------------------------------------
+
+inline auto to_char(extended_type value_) {
+    return static_cast<std::string::value_type>(value_ + '0');
+}
+
+// ----------------------------------------------------------------------------
+
+inline auto to_value(std::string::value_type char_) {
+    return char_ - '0';
+}
+
+// ----------------------------------------------------------------------------
+
 // Perform division of large number represented as a string
 [[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number_, extended_type divisor_) {
     assert(!number_.empty());
@@ -277,7 +291,7 @@ using extended_type = large_unsigned_integer::extended_type;
         return sum >= divisor_;
     });
 
-    const auto next_char = static_cast<std::string::value_type>(sum / divisor_ + '0');
+    const auto next_char = to_char(sum / divisor_);
     std::string result({ next_char });
     result.reserve(number_.size());
 
@@ -286,8 +300,8 @@ using extended_type = large_unsigned_integer::extended_type;
     }
 
     std::ranges::transform(++it, std::end(number_), std::back_inserter(result), [&sum, divisor_](char c) {
-        sum = (sum % divisor_) * 10 + (c - '0');
-        const auto next_char = static_cast<std::string::value_type>(sum / divisor_ + '0');
+        sum = (sum % divisor_) * 10 + to_value(c);
+        const auto next_char = to_char(sum / divisor_);
         return next_char;
     });
 
@@ -301,7 +315,7 @@ using extended_type = large_unsigned_integer::extended_type;
 
     // Sequencially apply modulo
     for (const auto digit : number_) {
-        result = (result * 10 + (digit - '0')) % divisor_;
+        result = (result * 10 + to_value(digit)) % divisor_;
     }
 
     return result;
@@ -358,34 +372,54 @@ using extended_type = large_unsigned_integer::extended_type;
 
 namespace details {
 
+[[nodiscard]] inline std::tuple<std::string, extended_type> add_integers(std::string&& sum_, extended_type lhs_, extended_type rhs_, extended_type carry_) {
+    const auto digitSum = lhs_ + rhs_ + carry_;
+    carry_ = digitSum / 10;
+
+    // String is constructed in reverse
+    sum_ += to_char(digitSum % 10);
+    return { sum_, carry_ };
+}
+
 // Function to add two strings representing large integers
 [[nodiscard]] std::string add_integers_as_string(const std::string& lhs_, const std::string& rhs_) {
     assert(!lhs_.empty() && !rhs_.empty());
 
-    std::string sum;
-    int carry = 0;
-    auto lhs_iter = lhs_.rbegin();
-    auto rhs_iter = rhs_.rbegin();
-
-    while (lhs_iter != lhs_.rend() || rhs_iter != rhs_.rend() || carry > 0) {
-        int lhs_digit = 0;
-        if (lhs_iter != lhs_.rend()) {
-            lhs_digit = *lhs_iter - '0';
-            ++lhs_iter;
-        }
-
-        int rhs_digit = 0;
-        if (rhs_iter != rhs_.rend()) {
-            rhs_digit = *rhs_iter - '0';
-            ++rhs_iter;
-        }
-
-        const int digitSum = lhs_digit + rhs_digit + carry;
-        carry = digitSum / 10;
-        sum = std::to_string(digitSum % 10) + sum;
+    if (lhs_.size() < rhs_.size()) {
+        return add_integers_as_string(rhs_, lhs_);
     }
 
-    return sum;
+    extended_type carry = 0;
+    std::string sum;
+    sum.reserve(lhs_.size() + 1);
+
+    // Add rhs digits
+    for (size_t index = 0; index < rhs_.size(); ++index) {
+        const auto lhs_digit = to_value(lhs_[index]);
+        const auto rhs_digit = to_value(rhs_[index]);
+
+        std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
+    }
+
+    // Propagate carry to lhs
+    for (size_t index = rhs_.size(); index < lhs_.size(); ++index) {
+        const auto lhs_digit = to_value(lhs_[index]);
+        constexpr const auto rhs_digit = 0;
+
+        std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
+    }
+
+    // Propagate carry
+    if (carry > 0) {
+        constexpr const auto lhs_digit = 0;
+        constexpr const auto rhs_digit = 0;
+        std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
+    }
+
+    assert(carry == 0);
+
+    auto reversed = std::views::reverse(sum);
+    return { std::begin(reversed), std::end(reversed) };
 }
 
 // ----------------------------------------------------------------------------
