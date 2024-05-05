@@ -285,6 +285,8 @@ template <std::floating_point T>
 
 namespace details {
 
+// ----------------------------------------------------------------------------
+// Helper class to generate digits one at a time
 class square_root_digits_generator {
 public:
     [[nodiscard]] unsigned int operator()(auto current_);
@@ -309,6 +311,8 @@ private:
     return integer_values;
 }
 
+// ----------------------------------------------------------------------------
+
 [[nodiscard]] std::string compute_integral_part_of_square_root(std::integral auto value_, square_root_digits_generator& generator_) {
     const auto integer_values = split_integer_into_groups_of_2_digits(value_);
 
@@ -322,6 +326,8 @@ private:
 
     return { std::begin(integral_string_rng), std::end(integral_string_rng) };
 }
+
+// ----------------------------------------------------------------------------
 
 [[nodiscard]] std::string compute_fractional_part_of_square_root(unsigned int precision_, square_root_digits_generator& generator_);
 [[nodiscard]] std::tuple<std::string, std::string> round_last_digit(std::string&& integral_part_, std::string&& fractional_part_, unsigned int rounding_digit_);
@@ -393,6 +399,8 @@ void compute_integral_part_of_square_root(std::ostream& stream_, std::integral a
 
     return;
 }
+
+// ----------------------------------------------------------------------------
 
 void compute_fractional_part_of_square_root(std::ostream& stream_, square_root_digits_generator& generator_, std::stop_token stop_);
 
