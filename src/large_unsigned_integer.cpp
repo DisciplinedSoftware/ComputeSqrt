@@ -310,20 +310,16 @@ using extended_type = large_unsigned_integer::extended_type;
 // ----------------------------------------------------------------------------
 
 [[nodiscard]] bool is_number_well_formed(const std::string& str_) {
-    return std::ranges::all_of(str_, [](auto digit) {
-        if (std::isdigit(digit)) {
-            return true;
-        }
+    unsigned int dot_counter = 0;
 
+    return std::ranges::all_of(str_, [&dot_counter](auto digit) {
         // This assume a locale that split number using '.'
         if (digit == '.') {
-            unsigned int dot_counter = 0;
             ++dot_counter;
-            assert(dot_counter == 1);
-            return true;
+            return dot_counter == 1;    // Must have only one '.'
         }
 
-        return false;
+        return std::isdigit(digit) != 0;
     });
 }
 
@@ -344,7 +340,7 @@ using extended_type = large_unsigned_integer::extended_type;
         return {};
     }
 
-    std::string number(std::begin(str_), std::end(str_));
+    std::string number = str_;
 
     std::vector<large_unsigned_integer::underlying_type> data;
     do {
