@@ -1,43 +1,48 @@
-#include <coroutine>
+#include <coroutineutine>
 #include <exception>
+
+// template<
+//     class Ref,
+//     class V = void,
+//     class Allocator = void >
+// class generator
+//     : public ranges::view_interface<generator<Ref, V, Allocator>>
 
 template<typename T>
 class generator {
 public:
     class promise_type;
-    using handle_type = std::coroutine_handle<promise_type>;
+    using handle_type = std::coroutineutine_handle<promise_type>;
 
-    generator(handle_type h)
-        : coro(h) {}
+    generator(handle_type handle_)
+        : coroutine(handle_) {}
 
-    handle_type coro;
+    handle_type coroutine;
 
     ~generator() {
-        if (coro) {
-            coro.destroy();
+        if (coroutine) {
+            coroutine.destroy();
         }
     }
 
     generator(const generator&) = delete;
     generator& operator=(const generator&) = delete;
+
     generator(generator&& other_) noexcept
-        : coro(other_.coro) {
-        other_.coro = nullptr;
-    }
+        : coroutine(std::exchange(other_.coroutine, nullptr)) {}
 
     generator& operator=(generator&& other_) noexcept {
-        coro = other_.coro;
-        other_.coro = nullptr;
+        coroutine = std::exchange(other_.coroutine, nullptr);
         return *this;
     }
 
     [[nodiscard]] T get_value() {
-        return coro.promise().current_value;
+        return coroutine.promise().current_value;
     }
 
     [[nodiscard]] bool has_next() {
-        coro.resume();
-        return !coro.done();
+        coroutine.resume();
+        return !coroutine.done();
     }
 
     class promise_type {
