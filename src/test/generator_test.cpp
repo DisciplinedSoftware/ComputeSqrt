@@ -1,12 +1,5 @@
-#include <coroutineutine>
+#include <coroutine>
 #include <exception>
-
-// template<
-//     class Ref,
-//     class V = void,
-//     class Allocator = void >
-// class generator
-//     : public ranges::view_interface<generator<Ref, V, Allocator>>
 
 template<typename T>
 class generator {
