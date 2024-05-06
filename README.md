@@ -1,6 +1,6 @@
 # ComputeSqrtOf42
 
-This is a simple executable that display and compute the square root of 42 in different ways.
+This is a simple executable that display the square root of 42 with an infinite stream.
 
 This project requires C++20 or more.
 
