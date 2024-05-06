@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "large_unsigned_integer.hpp"
+#include "utility.hpp"
 
 // ----------------------------------------------------------------------------
 // Arbitrarily long definition of sqrt(42)
@@ -321,7 +322,7 @@ private:
         | std::views::transform(std::ref(generator_))
         | std::views::transform([](auto x) {
         assert(x < 10);
-        return static_cast<std::string::value_type>(x) + '0';
+        return to_char(x);
     });
 
     return { std::begin(integral_string_rng), std::end(integral_string_rng) };

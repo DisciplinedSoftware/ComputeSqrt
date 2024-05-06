@@ -78,7 +78,7 @@ namespace details {
     // Compute the fractional part
     while (precision_ > 0 && generator_.has_next_digit()) {
         constexpr const unsigned int next_value = 0;
-        fractional_part += static_cast<std::string::value_type>(generator_(next_value)) + '0';
+        fractional_part += to_char(generator_(next_value));
         --precision_;
     }
 

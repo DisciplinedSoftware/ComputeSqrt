@@ -4,6 +4,8 @@
 #include <cassert>
 #include <ranges>
 
+#include "utility.hpp"
+
 namespace {
 
 using collection_type = large_unsigned_integer::collection_type;
@@ -268,18 +270,6 @@ using extended_type = large_unsigned_integer::extended_type;
 
 // ----------------------------------------------------------------------------
 
-inline auto to_char(extended_type value_) {
-    return static_cast<std::string::value_type>(value_ + '0');
-}
-
-// ----------------------------------------------------------------------------
-
-inline auto to_value(std::string::value_type char_) {
-    return char_ - '0';
-}
-
-// ----------------------------------------------------------------------------
-
 // Perform division of large number represented as a string
 [[nodiscard]] std::string divide_integer_as_string_by_integer(const std::string& number_, extended_type divisor_) {
     assert(!number_.empty());
@@ -404,7 +394,7 @@ namespace details {
         const auto rhs_digit = to_value(rhs_[index]);
 #endif
         std::tie(sum, carry) = add_integers(std::move(sum), lhs_digit, rhs_digit, carry);
-    }
+}
 
     // Propagate carry to lhs
     for (const auto lhs_char : lhs_ | std::views::drop(rhs_.size())) {
@@ -466,9 +456,9 @@ namespace details {
     return result;
 }
 
-} // namespace details
+    } // namespace details
 
-// ----------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------
 
 [[nodiscard]] std::string to_string(const large_unsigned_integer& value_) {
     return details::recompose_data_as_base_10_string(value_.get_data(), large_unsigned_integer::base);
