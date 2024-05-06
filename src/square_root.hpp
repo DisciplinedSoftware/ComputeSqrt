@@ -16,7 +16,6 @@
 
 #include "generator.hpp"
 #include "large_unsigned_integer.hpp"
-#include "spsc_queue.hpp"
 #include "utility.hpp"
 
 // ----------------------------------------------------------------------------
@@ -112,23 +111,9 @@ void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integ
         return;
     }
 
-    spsc_queue<char> queue;
-    std::stop_source producer_stop_source;
-    std::jthread producer([&queue, value_, stop_, &producer_stop_source]() {
-        auto generator = details::compute_square_root_digit_by_digit_method(value_);
-        while (!stop_.stop_requested() && generator.has_value()) {
-            queue.emplace(generator.value());
-        }
-
-        producer_stop_source.request_stop();
-    });
-
-    auto producer_stop = producer_stop_source.get_token();
-    while (!producer_stop.stop_requested()) {
-        auto digit = queue.pop(producer_stop);
-        if (digit.has_value()) {
-            stream_ << digit.value() << std::flush; // Flush stream everytime for smoother display
-        }
+    auto generator = details::compute_square_root_digit_by_digit_method(value_);
+    while (!stop_.stop_requested() && generator.has_value()) {
+        stream_ << generator.value() << std::flush; // Flush stream everytime for smoother display
     }
 }
 
