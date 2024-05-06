@@ -64,6 +64,10 @@ generator<unsigned int> compute_integral_part_of_square_root(std::integral auto 
 
 generator<unsigned int> compute_fractional_part_of_square_root(square_root_next_digit_computer& computer_);
 
+}
+
+// ----------------------------------------------------------------------------
+
 generator<char> compute_square_root_digit_by_digit_method(std::integral auto value_) {
     assert(value_ != NAN && value_ >= 0);
 
@@ -73,9 +77,9 @@ generator<char> compute_square_root_digit_by_digit_method(std::integral auto val
         co_return;
     }
 
-    square_root_next_digit_computer computer;
+    details::square_root_next_digit_computer computer;
 
-    auto integral_generator = compute_integral_part_of_square_root(value_, computer);
+    auto integral_generator = details::compute_integral_part_of_square_root(value_, computer);
     while (integral_generator.has_value()) {
         co_yield to_char(integral_generator.value());
     }
@@ -87,13 +91,11 @@ generator<char> compute_square_root_digit_by_digit_method(std::integral auto val
 
     co_yield '.';
 
-    auto fractional_generator = compute_fractional_part_of_square_root(computer);
+    auto fractional_generator = details::compute_fractional_part_of_square_root(computer);
 
     while (fractional_generator.has_value()) {
         co_yield to_char(fractional_generator.value());
     }
-}
-
 }
 
 // ----------------------------------------------------------------------------
@@ -111,7 +113,7 @@ void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integ
         return;
     }
 
-    auto generator = details::compute_square_root_digit_by_digit_method(value_);
+    auto generator = compute_square_root_digit_by_digit_method(value_);
     while (!stop_.stop_requested() && generator.has_value()) {
         stream_ << generator.value() << std::flush; // Flush stream everytime for smoother display
     }

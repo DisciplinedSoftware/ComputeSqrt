@@ -28,11 +28,10 @@ TEST_CASE("Square root") {
         CHECK(stream.str() == "2"s);
         stream = std::ostringstream();
 
-        std::jthread thread([&stream](std::stop_token stop_) {compute_square_root_digit_by_digit_method(stream, 42, stop_);});
-        while (stream.str().length() < 102) { std::this_thread::yield(); }
-        thread.request_stop();
-        thread.join();
-        auto result = stream.str().substr(0, 102);
-        CHECK(result == "6.4807406984078602309659674360879966577052043070583465497113543978096173778440443714003609066056102356"s);
+        auto generator = compute_square_root_digit_by_digit_method(42);
+        for (unsigned int count = 0; count < 102 && generator.has_value(); ++count) {
+            stream << generator.value();
+        }
+        CHECK(stream.str() == "6.4807406984078602309659674360879966577052043070583465497113543978096173778440443714003609066056102356"s);
     }
 }
