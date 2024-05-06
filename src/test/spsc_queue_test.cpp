@@ -51,7 +51,7 @@ TEST_CASE("Single producer single consumer queue") {
     }
 
     SECTION("Emplace values are popped in the same order with reallocation after pop") {
-        spsc_queue<int> queue(2);
+        spsc_queue<int> queue(2, 2);
         queue.emplace(1);
         CHECK(queue.pop() == 1);
         queue.emplace(2);
@@ -90,7 +90,7 @@ TEST_CASE("Single producer single consumer queue") {
 
     SECTION("Emplace values are popped in the same order in multithreaded context with reallocation") {
         constexpr size_t nb_data = 10;
-        spsc_queue<int> queue(nb_data / 2); // Force future reallocation
+        spsc_queue<int> queue(nb_data / 2, nb_data); // Force future reallocation
         std::jthread producer([&]() {
             for (int i = 0; i < nb_data; ++i) {
                 queue.emplace(i);

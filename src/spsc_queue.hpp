@@ -7,13 +7,15 @@
 template< typename T >
 class spsc_queue {
 public:
-    static constexpr size_t DefaultCapacity = 2048;
+    static constexpr size_t DefaultCapacity = 1024;
+    static constexpr size_t DefaultIncrement = 1024;
 
     spsc_queue()
-        : collection(std::make_shared< std::vector< T > >(DefaultCapacity)) {}
+        : spsc_queue(DefaultCapacity, DefaultIncrement) {}
 
-    spsc_queue(size_t capacity_)
-        : collection(std::make_shared< std::vector< T > >(capacity_)) {}
+    spsc_queue(size_t capacity_, size_t increment_ = DefaultIncrement)
+        : collection(std::make_shared< std::vector< T > >(capacity_))
+        , increment(increment_) {}
 
     template< typename ... Args >
     void emplace(Args&&... args) {
@@ -85,7 +87,7 @@ private:
     // Return the new producer index and the next producer index
     [[nodiscard]] std::tuple< size_t, size_t > resize(size_t current_consumer_index_) {
         auto old_collection = collection.load(std::memory_order_acquire);
-        auto new_collection = std::make_shared< std::vector< T > >(old_collection->size() + DefaultCapacity); // Increment size slightly
+        auto new_collection = std::make_shared< std::vector< T > >(old_collection->size() + increment);
 
         std::copy(std::begin(*old_collection) + current_consumer_index_, std::end(*old_collection), std::begin(*new_collection) + current_consumer_index_);
         std::copy(std::begin(*old_collection), std::begin(*old_collection) + current_consumer_index_, std::begin(*new_collection) + old_collection->size());
@@ -100,4 +102,6 @@ private:
     std::atomic_size_t consumer_index{ 0 };
 
     std::atomic< std::shared_ptr< std::vector< T > > > collection{};
+
+    size_t increment{ DefaultIncrement };
 };
