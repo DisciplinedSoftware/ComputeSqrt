@@ -24,8 +24,8 @@
 namespace details {
 
 // ----------------------------------------------------------------------------
-// Helper class to generate digits one at a time
-class square_root_digits_generator {
+// Helper class to compute digits one at a time
+class square_root_next_digit_computer {
 public:
     [[nodiscard]] unsigned int operator()(auto current_);
     [[nodiscard]] bool has_next_digit() const;
@@ -49,12 +49,12 @@ private:
     return integer_values;
 }
 
-generator<unsigned int> compute_integral_part_of_square_root(std::integral auto value_, square_root_digits_generator& generator_) {
+generator<unsigned int> compute_integral_part_of_square_root(std::integral auto value_, square_root_next_digit_computer& computer_) {
     const auto integer_values = split_integer_into_groups_of_2_digits(value_);
 
     const auto inputs
         = std::views::reverse(integer_values)
-        | std::views::transform(std::ref(generator_));
+        | std::views::transform(std::ref(computer_));
 
     for (auto x : inputs) {
         co_yield x;
@@ -63,7 +63,7 @@ generator<unsigned int> compute_integral_part_of_square_root(std::integral auto 
 
 // ----------------------------------------------------------------------------
 
-generator<unsigned int> compute_fractional_part_of_square_root(square_root_digits_generator& generator_);
+generator<unsigned int> compute_fractional_part_of_square_root(square_root_next_digit_computer& computer_);
 
 generator<char> compute_square_root_digit_by_digit_method(std::integral auto value_) {
     assert(value_ != NAN && value_ >= 0);
@@ -74,21 +74,21 @@ generator<char> compute_square_root_digit_by_digit_method(std::integral auto val
         co_return;
     }
 
-    square_root_digits_generator generator;
+    square_root_next_digit_computer computer;
 
-    auto integral_generator = compute_integral_part_of_square_root(value_, generator);
+    auto integral_generator = compute_integral_part_of_square_root(value_, computer);
     while (integral_generator.has_value()) {
         co_yield to_char(integral_generator.value());
     }
 
     // Early return optimization when the number is a perfect square
-    if (!generator.has_next_digit()) {
+    if (!computer.has_next_digit()) {
         co_return;
     }
 
     co_yield '.';
 
-    auto fractional_generator = compute_fractional_part_of_square_root(generator);
+    auto fractional_generator = compute_fractional_part_of_square_root(computer);
 
     while (fractional_generator.has_value()) {
         co_yield to_char(fractional_generator.value());
