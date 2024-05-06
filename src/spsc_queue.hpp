@@ -1,5 +1,6 @@
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -38,11 +39,33 @@ public:
             std::this_thread::yield();
             current_producer_index = producer_index.load(std::memory_order_acquire);
         }
+
         T data = (*(collection.load(std::memory_order_acquire)))[current_consumer_index];
         size_t const next_consumer_index = next_index(current_consumer_index);
         consumer_index.store(next_consumer_index, std::memory_order_release);
 
         return data;
+    }
+
+    // Will pop data even if stop is requested to allow empyting the queue
+    [[nodiscard]] std::optional<T> pop(std::stop_token stop_) {
+        size_t const current_consumer_index = consumer_index.load(std::memory_order_relaxed);
+        size_t current_producer_index = producer_index.load(std::memory_order_acquire);
+
+        while (empty(current_consumer_index, current_producer_index)) {
+            if (stop_.stop_requested()) [[unlikely]] {
+                return {};
+            }
+
+            std::this_thread::yield();
+            current_producer_index = producer_index.load(std::memory_order_acquire);
+        }
+
+        T data = (*(collection.load(std::memory_order_acquire)))[current_consumer_index];
+        size_t const next_consumer_index = next_index(current_consumer_index);
+        consumer_index.store(next_consumer_index, std::memory_order_release);
+
+        return std::make_optional<T>(data);
     }
 
     [[nodiscard]] bool empty() {
