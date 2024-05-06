@@ -20,7 +20,7 @@ TEST_CASE("Generator") {
         auto finite_generator = make_finite_generator(0, 5);
         std::vector<int> result;
         while (finite_generator.has_next()) {
-            const auto value = finite_generator.get_value();
+            const auto value = finite_generator.value();
             result.emplace_back(value);
         }
 
@@ -31,7 +31,7 @@ TEST_CASE("Generator") {
         auto infinite_generator = make_infinite_generator(0);
         std::vector<int> result;
         while (infinite_generator.has_next() && result.size() < 5) {
-            const auto value = infinite_generator.get_value();
+            const auto value = infinite_generator.value();
             result.emplace_back(value);
         }
 

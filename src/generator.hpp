@@ -30,7 +30,7 @@ public:
         return *this;
     }
 
-    [[nodiscard]] T get_value() {
+    [[nodiscard]] T value() {
         return coroutine.promise().current_value;
     }
 
