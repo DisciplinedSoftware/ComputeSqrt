@@ -16,11 +16,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 # Add your source files
 set(SOURCES 
-    src/main.cpp
+    src/generator.hpp
     src/large_unsigned_integer.hpp
     src/large_unsigned_integer.cpp
+    src/main.cpp
     src/square_root.hpp
     src/square_root.cpp
+    src/utility.hpp
     src/test/generator_test.cpp
     src/test/large_unsigned_integer_test.cpp
     src/test/square_root_test.cpp
