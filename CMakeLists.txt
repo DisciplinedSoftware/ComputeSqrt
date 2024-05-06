@@ -25,6 +25,7 @@ set(SOURCES
     src/utility.hpp
     src/test/generator_test.cpp
     src/test/large_unsigned_integer_test.cpp
+    src/test/spsc_queue_test.cpp
     src/test/square_root_test.cpp
 )
 
