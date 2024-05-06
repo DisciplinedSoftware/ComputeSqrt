@@ -431,7 +431,7 @@ generator<char> compute_square_root_digit_by_digit_method_coroutine(std::integra
     square_root_digits_generator generator;
 
     auto integral_generator = compute_integral_part_of_square_root_coroutine(value_, generator);
-    while (integral_generator.has_next()) {
+    while (integral_generator.has_value()) {
         co_yield to_char(integral_generator.value());
     }
 
@@ -444,7 +444,7 @@ generator<char> compute_square_root_digit_by_digit_method_coroutine(std::integra
 
     auto fractional_generator = compute_fractional_part_of_square_root_coroutine(generator);
 
-    while (fractional_generator.has_next()) {
+    while (fractional_generator.has_value()) {
         co_yield to_char(fractional_generator.value());
     }
 }
@@ -467,7 +467,7 @@ void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integ
     }
 
     auto generator = details::compute_square_root_digit_by_digit_method_coroutine(value_);
-    while (!stop_.stop_requested() && generator.has_next()) {
+    while (!stop_.stop_requested() && generator.has_value()) {
         stream_ << generator.value() << std::flush;    // Flush stream for smoother display
     }
 }

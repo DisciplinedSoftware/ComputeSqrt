@@ -34,7 +34,7 @@ public:
         return coroutine.promise().current_value;
     }
 
-    [[nodiscard]] bool has_next() {
+    [[nodiscard]] bool has_value() {
         coroutine.resume();
         return !coroutine.done();
     }
