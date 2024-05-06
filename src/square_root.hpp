@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "generator.hpp"
 #include "large_unsigned_integer.hpp"
 #include "utility.hpp"
 
@@ -283,6 +284,21 @@ template <std::floating_point T>
 }
 
 // ----------------------------------------------------------------------------
+// This is a non protable version, but probably the fastest one
+#ifdef __GNUC__
+[[nodiscard]] inline double compute_square_root_assembly_method(double value_) {
+    double result;
+    asm("fldl %[n];"           // Load the operand n onto the FPU stack
+        "fsqrt;"               // Perform square root operation on the top of the FPU stack
+        "fstpl %[res];"        // Store the result from the FPU stack into the variable result
+        : [res] "=m"(result)   // Output constraint for the result variable
+        : [n] "m"(value_)      // Input constraint for the input variable n
+    );
+    return result;
+}
+#endif
+
+// ----------------------------------------------------------------------------
 
 namespace details {
 
@@ -387,45 +403,50 @@ private:
 
 namespace details {
 
-void compute_integral_part_of_square_root(std::ostream& stream_, std::integral auto value_, square_root_digits_generator& generator_) {
+generator<unsigned int> compute_integral_part_of_square_root_coroutine(std::integral auto value_, square_root_digits_generator& generator_) {
     const auto integer_values = split_integer_into_groups_of_2_digits(value_);
 
     const auto inputs
         = std::views::reverse(integer_values)
         | std::views::transform(std::ref(generator_));
 
-    std::ranges::for_each(inputs, [&stream_](const auto x) {
-        stream_ << x;
-    });
-
-    return;
+    for (auto x : inputs) {
+        co_yield x;
+    }
 }
 
 // ----------------------------------------------------------------------------
 
-void compute_fractional_part_of_square_root(std::ostream& stream_, square_root_digits_generator& generator_, std::stop_token stop_);
+generator<unsigned int> compute_fractional_part_of_square_root_coroutine(square_root_digits_generator& generator_);
 
-void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integral auto value_, std::stop_token stop_) {
+generator<char> compute_square_root_digit_by_digit_method_coroutine(std::integral auto value_) {
     assert(value_ != NAN && value_ >= 0);
 
     // Early return optimization
     if (value_ == 0 || value_ == 1) {
-        stream_ << value_;
-        return;
+        co_yield to_char(value_);
+        co_return;
     }
 
     square_root_digits_generator generator;
 
-    compute_integral_part_of_square_root(stream_, value_, generator);
+    auto integral_generator = compute_integral_part_of_square_root_coroutine(value_, generator);
+    while (integral_generator.has_next()) {
+        co_yield to_char(integral_generator.get_value());
+    }
 
     // Early return optimization when the number is a perfect square
     if (!generator.has_next_digit()) {
-        return;
+        co_return;
     }
 
-    stream_ << '.';
+    co_yield '.';
 
-    compute_fractional_part_of_square_root(stream_, generator, stop_);
+    auto fractional_generator = compute_fractional_part_of_square_root_coroutine(generator);
+
+    while (fractional_generator.has_next()) {
+        co_yield to_char(fractional_generator.get_value());
+    }
 }
 
 }
@@ -445,22 +466,10 @@ void compute_square_root_digit_by_digit_method(std::ostream& stream_, std::integ
         return;
     }
 
-    details::compute_square_root_digit_by_digit_method(stream_, value_, stop_);
+    auto generator = details::compute_square_root_digit_by_digit_method_coroutine(value_);
+    while (!stop_.stop_requested() && generator.has_next()) {
+        stream_ << generator.get_value() << std::flush;    // Flush stream for smoother display
+    }
 }
-
-// ----------------------------------------------------------------------------
-// This is a non protable version, but probably the fastest one
-#ifdef __GNUC__
-[[nodiscard]] inline double compute_square_root_assembly_method(double value_) {
-    double result;
-    asm("fldl %[n];"           // Load the operand n onto the FPU stack
-        "fsqrt;"               // Perform square root operation on the top of the FPU stack
-        "fstpl %[res];"        // Store the result from the FPU stack into the variable result
-        : [res] "=m"(result)   // Output constraint for the result variable
-        : [n] "m"(value_)      // Input constraint for the input variable n
-    );
-    return result;
-}
-#endif
 
 #endif // SQUARE_ROOT_HPP
