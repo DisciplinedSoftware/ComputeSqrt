@@ -71,67 +71,7 @@ namespace details {
 
 // ----------------------------------------------------------------------------
 
-[[nodiscard]] std::string compute_fractional_part_of_square_root(unsigned int precision_, square_root_digits_generator& generator_) {
-    std::string fractional_part;
-    fractional_part.reserve(precision_);
-
-    // Compute the fractional part
-    while (precision_ > 0 && generator_.has_next_digit()) {
-        constexpr const unsigned int next_value = 0;
-        fractional_part += to_char(generator_(next_value));
-        --precision_;
-    }
-
-    return fractional_part;
-}
-
-// ----------------------------------------------------------------------------
-
-[[nodiscard]] std::tuple<std::string, bool> propagate_carry(std::string&& number_, bool carry_) {
-    for (auto& digit : number_ | std::views::reverse) {
-        if (!carry_) {
-            break;
-        }
-
-        if (digit == '9') {
-            digit = '0';
-        } else {
-            digit += 1;
-            carry_ = false;
-        }
-    }
-
-    return { number_, carry_ };
-}
-
-// ----------------------------------------------------------------------------
-
-[[nodiscard]] std::tuple<std::string, std::string> round_last_digit(std::string&& integral_part_, std::string&& fractional_part_, unsigned int rounding_digit_) {
-    const double rounded_last_digit = std::round((static_cast<double>(rounding_digit_) / 10.0));
-
-    bool carry = rounded_last_digit >= 1;
-    std::tie(fractional_part_, carry) = propagate_carry(std::move(fractional_part_), carry);
-    std::tie(integral_part_, carry) = propagate_carry(std::move(integral_part_), carry);
-
-    if (carry) {
-        integral_part_.insert(std::begin(integral_part_), '1');
-    }
-
-    return { integral_part_, fractional_part_ };
-}
-
-// ----------------------------------------------------------------------------
-
-[[nodiscard]] std::string trim_lower_zeros(std::string&& fractional_part_) {
-    auto last = std::ranges::find_if_not(fractional_part_ | std::views::reverse, [](auto digit) {return digit == '0';});
-    fractional_part_.erase(last.base(), std::end(fractional_part_));
-
-    return fractional_part_;
-}
-
-// ----------------------------------------------------------------------------
-
-generator<unsigned int> compute_fractional_part_of_square_root_coroutine(square_root_digits_generator& generator_) {
+generator<unsigned int> compute_fractional_part_of_square_root(square_root_digits_generator& generator_) {
     while (generator_.has_next_digit()) {
         constexpr const unsigned int next_value = 0;
         co_yield generator_(next_value);
