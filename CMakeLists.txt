@@ -20,6 +20,7 @@ set(SOURCES
     src/large_unsigned_integer.hpp
     src/large_unsigned_integer.cpp
     src/main.cpp
+    src/spsc_queue.hpp
     src/square_root.hpp
     src/square_root.cpp
     src/utility.hpp
